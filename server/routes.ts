@@ -1,8 +1,73 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { DbStorage } from "./db-storage";
+
+// Use database storage in production
+const dbStorage = new DbStorage();
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // ===== PRODUCT ROUTES =====
+  
+  // Get all products
+  app.get("/api/products", async (req: Request, res: Response) => {
+    try {
+      const products = await dbStorage.getProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  // Get products by category
+  app.get("/api/products/category/:category", async (req: Request, res: Response) => {
+    try {
+      const { category } = req.params;
+      const products = await dbStorage.getProductsByCategory(category);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products by category:", error);
+      res.status(500).json({ error: "Failed to fetch products" });
+    }
+  });
+
+  // Get single product
+  app.get("/api/products/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const product = await dbStorage.getProductById(id);
+      
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      res.status(500).json({ error: "Failed to fetch product" });
+    }
+  });
+
+  // Update product special status (admin only)
+  app.patch("/api/products/:id/special", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { isSpecial } = req.body;
+      
+      if (typeof isSpecial !== "boolean") {
+        return res.status(400).json({ error: "isSpecial must be a boolean" });
+      }
+      
+      await dbStorage.updateProductSpecial(id, isSpecial);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+
+  // ===== EXISTING ROUTES =====
   // PayFast ITN (Instant Transaction Notification) endpoint
   // This is a stub for production implementation
   // TODO (PRODUCTION): Implement proper PayFast signature verification

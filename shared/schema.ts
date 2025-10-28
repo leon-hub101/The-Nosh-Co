@@ -47,6 +47,8 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  status: true,
+  paymentVerified: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

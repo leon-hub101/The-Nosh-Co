@@ -94,12 +94,12 @@ export class MemStorage implements IStorage {
     const now = new Date();
     const order: Order = {
       id,
-      status: insertOrder.status || "pending",
+      status: "pending",
       total: insertOrder.total,
       items: insertOrder.items as Array<{productId: number, productName: string, size: string, price: string, quantity: number}>,
       pudoLocation: insertOrder.pudoLocation as {name: string, address: string, code: string} | null || null,
       paymentMethod: insertOrder.paymentMethod || null,
-      paymentVerified: insertOrder.paymentVerified || false,
+      paymentVerified: false,
       payfastTransactionId: insertOrder.payfastTransactionId || null,
       customerEmail: insertOrder.customerEmail || null,
       customerPhone: insertOrder.customerPhone || null,
