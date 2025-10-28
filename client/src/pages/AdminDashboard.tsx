@@ -6,6 +6,9 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
 import { usePush } from "@/hooks/usePush";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import cashewsImg from "@assets/generated_images/Premium_cashew_nuts_product_photo_c8b18a7a.png";
 import strawberriesImg from "@assets/generated_images/Fresh_organic_strawberries_product_photo_dd4d1d44.png";
 import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_28680ce6.png";
@@ -66,7 +69,7 @@ export default function AdminDashboard() {
       .map(p => `• ${p.name} - R${p.price1kg}/kg`)
       .join('\n');
 
-    const message = `🌿 *Today's Special at The Nosh Co.* 🌿\n\n${productList}\n\nOrder now! Visit our store.`;
+    const message = `*Today's Special at The Nosh Co.*\n\n${productList}\n\nOrder now! Visit our store.`;
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
 
@@ -92,48 +95,50 @@ export default function AdminDashboard() {
       <header className="sticky top-0 z-40 bg-white border-b border-card-border">
         <div className="flex items-center justify-between h-20 md:h-24 px-6 md:px-12 max-w-6xl mx-auto">
           <div className="flex items-center gap-4">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setLocation('/')}
-              className="p-2 hover:opacity-70 transition-opacity"
               data-testid="button-back-home"
             >
               <ArrowLeft className="w-6 h-6" />
-            </button>
+            </Button>
             <h1 className="text-xl md:text-2xl font-serif font-light tracking-widest uppercase text-foreground">
               Admin Dashboard
             </h1>
           </div>
-          <button
+          <Button
+            variant="outline"
             onClick={handleLogout}
-            className="flex items-center gap-2 px-6 py-2 border border-card-border hover:bg-stone-50 transition-colors text-sm font-sans tracking-wide uppercase"
             data-testid="button-logout"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 mr-2" />
             Logout
-          </button>
+          </Button>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 md:px-12 py-12">
         {/* Action Buttons */}
         <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button
+          <Button
             onClick={handleWhatsAppShare}
-            className="flex items-center justify-center gap-3 bg-[#25D366] text-white px-8 py-6 text-base font-sans tracking-wide uppercase hover:bg-[#20BA5A] transition-colors"
+            className="bg-[#25D366] text-white border-[#25D366] h-auto py-6 text-base font-sans tracking-wide uppercase"
             data-testid="button-whatsapp-share"
           >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-5 h-5 mr-3" />
             Share Today's Special on WhatsApp
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handlePushNotification}
-            className="flex items-center justify-center gap-3 bg-black text-white px-8 py-6 text-base font-sans tracking-wide uppercase hover:bg-gray-900 transition-colors"
+            variant="default"
+            className="h-auto py-6 text-base font-sans tracking-wide uppercase"
             data-testid="button-send-push"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-5 h-5 mr-3" />
             {hasPermission ? 'Send Test Push Notification' : 'Enable Push Notifications'}
-          </button>
+          </Button>
         </div>
 
         {/* Products List */}
@@ -153,15 +158,13 @@ export default function AdminDashboard() {
                   data-testid={`admin-product-${product.id}`}
                 >
                   <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-stone-50 flex items-center justify-center">
-                      {product.imageUrl ? (
+                    <div className="w-20 h-20 bg-stone-50 flex items-center justify-center overflow-hidden">
+                      {product.imageUrl && (
                         <img
                           src={product.imageUrl}
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />
-                      ) : (
-                        <div className="text-sage/30">📦</div>
                       )}
                     </div>
                     <div>
@@ -174,27 +177,21 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <label 
-                    htmlFor={`admin-special-${product.id}`}
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    <span className="text-sm font-sans tracking-wide uppercase text-gray-700">
+                  <div className="flex items-center gap-3">
+                    <Label 
+                      htmlFor={`admin-special-${product.id}`}
+                      className="text-sm font-sans tracking-wide uppercase text-gray-700 cursor-pointer"
+                    >
                       Special
-                    </span>
-                    <div className="relative">
-                      <input
-                        id={`admin-special-${product.id}`}
-                        type="checkbox"
-                        checked={productIsSpecial}
-                        onChange={() => toggleSpecial(product.id)}
-                        className="sr-only peer"
-                        data-testid={`admin-toggle-special-${product.id}`}
-                      />
-                      <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 peer-focus:ring-offset-2 peer-checked:bg-orange-500 transition-colors">
-                        <div className="dot absolute left-1 top-1 bg-white w-4 h-4 transition-transform peer-checked:translate-x-5"></div>
-                      </div>
-                    </div>
-                  </label>
+                    </Label>
+                    <Switch
+                      id={`admin-special-${product.id}`}
+                      checked={productIsSpecial}
+                      onCheckedChange={() => toggleSpecial(product.id)}
+                      data-testid={`admin-toggle-special-${product.id}`}
+                      className="data-[state=checked]:bg-orange-500"
+                    />
+                  </div>
                 </div>
               );
             })}
