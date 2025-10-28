@@ -57,6 +57,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         ...currentOrder,
         status: 'paid' as const,
       };
+      
       setCurrentOrder(updatedOrder);
       
       // Add to order history using functional update to ensure we have latest state
