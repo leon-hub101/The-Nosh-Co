@@ -9,6 +9,7 @@ import { SpecialsProvider } from "@/contexts/SpecialsContext";
 import { OrderProvider } from "@/contexts/OrderContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Home from "@/pages/Home";
+import CategoryPage from "@/pages/CategoryPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Checkout from "@/pages/Checkout";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
@@ -19,6 +20,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/category/:slug" component={CategoryPage} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/admin">

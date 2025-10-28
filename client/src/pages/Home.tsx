@@ -1,67 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { type Product } from "@shared/schema";
 import { ShieldCheck, Settings } from "lucide-react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import ProductGrid from "@/components/ProductGrid";
+import CategoryCard from "@/components/CategoryCard";
 import AdminLoginModal from "@/components/AdminLoginModal";
 import BasketModal from "@/components/BasketModal";
 import { useAdmin } from "@/contexts/AdminContext";
-import { useSpecials } from "@/contexts/SpecialsContext";
-import { useOffline } from "@/hooks/useOffline";
-import cashewsImg from "@assets/generated_images/Premium_cashew_nuts_product_photo_c8b18a7a.png";
-import strawberriesImg from "@assets/generated_images/Fresh_organic_strawberries_product_photo_dd4d1d44.png";
-import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_28680ce6.png";
+import { categories } from "@/data/products";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
   const { login, isAdminLoggedIn } = useAdmin();
-  const { toggleSpecial } = useSpecials();
-  const { isOffline } = useOffline();
-
-  // TODO: remove mock functionality - replace with API call
-  const [products] = useState<Product[]>([
-    {
-      id: 1,
-      name: "Premium Cashews",
-      price500g: "110.00",
-      price1kg: "220.00",
-      imageUrl: cashewsImg,
-      isSpecial: true,
-    },
-    {
-      id: 2,
-      name: "Fresh Strawberries",
-      price500g: "42.50",
-      price1kg: "85.00",
-      imageUrl: strawberriesImg,
-      isSpecial: false,
-    },
-    {
-      id: 3,
-      name: "Roasted Almonds",
-      price500g: "90.00",
-      price1kg: "180.00",
-      imageUrl: almondsImg,
-      isSpecial: false,
-    },
-  ]);
-
-  // Initialize specials from mock data on first load
-  useEffect(() => {
-    const stored = localStorage.getItem('specials');
-    if (!stored) {
-      // Set initial specials based on mock data
-      products.forEach(product => {
-        if (product.isSpecial) {
-          toggleSpecial(product.id);
-        }
-      });
-    }
-  }, []);
 
   const handleAdminLoginSuccess = () => {
     login();
@@ -73,18 +25,22 @@ export default function Home() {
       <Header onBasketClick={() => setIsBasketModalOpen(true)} />
       <Hero />
       
-      <main className="max-w-6xl mx-auto px-6 md:px-12 py-12 md:py-24" id="products">
+      <main className="max-w-6xl mx-auto px-6 md:px-12 py-12 md:py-24" id="categories">
         <div className="mb-12 md:mb-16 text-center">
           <h2 className="text-3xl md:text-5xl font-serif font-light tracking-wide text-foreground mb-4">
             Our Collection
           </h2>
           <div className="w-24 h-px bg-sage mx-auto mb-4" />
           <p className="text-base font-sans text-gray-700 max-w-2xl mx-auto">
-            Artisan selections of the finest fruits and nuts, carefully curated for discerning palates
+            Artisan selections of the finest fruits, nuts, and premium ingredients
           </p>
         </div>
         
-        <ProductGrid products={products} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+          {categories.map((category) => (
+            <CategoryCard key={category.slug} category={category} />
+          ))}
+        </div>
       </main>
       
       <footer className="border-t border-card-border bg-white py-12">

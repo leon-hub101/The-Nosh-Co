@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Share2, Send, LogOut, Package } from "lucide-react";
+import { ArrowLeft, Share2, Send, LogOut, Package, Grid3x3 } from "lucide-react";
 import { type Product } from "@shared/schema";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
 
       <main className="max-w-6xl mx-auto px-6 md:px-12 py-12">
         {/* Action Buttons */}
-        <div className="mb-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mb-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Button
             onClick={handleWhatsAppShare}
             className="bg-[#25D366] text-white border-[#25D366] h-auto py-6 text-base font-sans tracking-wide uppercase"
@@ -149,6 +149,16 @@ export default function AdminDashboard() {
           >
             <Package className="w-5 h-5 mr-3" />
             View Order History
+          </Button>
+
+          <Button
+            onClick={() => setLocation('/')}
+            variant="outline"
+            className="h-auto py-6 text-base font-sans tracking-wide uppercase"
+            data-testid="button-view-categories"
+          >
+            <Grid3x3 className="w-5 h-5 mr-3" />
+            View Categories
           </Button>
         </div>
 
