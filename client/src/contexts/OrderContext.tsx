@@ -1,13 +1,13 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-interface PudoLocation {
+export interface PudoLocation {
   id: string;
   name: string;
   address: string;
 }
 
-interface Order {
+export interface Order {
   id: string;
   items: Array<{
     productId: number;
