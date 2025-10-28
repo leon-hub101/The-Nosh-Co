@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { type Product } from "@shared/schema";
 import Header from "@/components/Header";
+import Hero from "@/components/Hero";
 import ProductGrid from "@/components/ProductGrid";
-import AdminButton from "@/components/AdminButton";
 import cashewsImg from "@assets/generated_images/Premium_cashew_nuts_product_photo_c8b18a7a.png";
 import strawberriesImg from "@assets/generated_images/Fresh_organic_strawberries_product_photo_dd4d1d44.png";
 import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_28680ce6.png";
@@ -13,57 +13,60 @@ export default function Home() {
     {
       id: 1,
       name: "Premium Cashews",
-      price: "220.00",
-      unit: "/kg",
-      stock: 50,
+      price500g: "110.00",
+      price1kg: "220.00",
       imageUrl: cashewsImg,
       isSpecial: true,
     },
     {
       id: 2,
       name: "Fresh Strawberries",
-      price: "85.00",
-      unit: "/pack",
-      stock: 30,
+      price500g: "42.50",
+      price1kg: "85.00",
       imageUrl: strawberriesImg,
       isSpecial: false,
     },
     {
       id: 3,
       name: "Roasted Almonds",
-      price: "180.00",
-      unit: "/kg",
-      stock: 25,
+      price500g: "90.00",
+      price1kg: "180.00",
       imageUrl: almondsImg,
       isSpecial: false,
     },
   ]);
 
-  const handleProductClick = (product: Product) => {
-    console.log("Product clicked:", product.name);
-    // TODO: Navigate to product detail page
-  };
-
-  const handleAdminClick = () => {
-    console.log("Admin button clicked");
-    // TODO: Navigate to admin login page
+  const handleAddToBasket = (productId: number, size: '500g' | '1kg') => {
+    console.log(`Added product ${productId} - ${size} to basket`);
+    // TODO: Implement basket functionality
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900 mb-2">
-            Fresh Fruits & Premium Nuts
+      <Hero />
+      
+      <main className="max-w-6xl mx-auto px-6 md:px-12 py-12 md:py-24" id="products">
+        <div className="mb-12 md:mb-16 text-center">
+          <h2 className="text-3xl md:text-5xl font-serif font-light tracking-wide text-foreground mb-4">
+            Our Collection
           </h2>
-          <p className="text-base text-gray-600">
-            Quality products delivered to your door
+          <div className="w-24 h-px bg-sage mx-auto mb-4" />
+          <p className="text-base font-sans text-gray-700 max-w-2xl mx-auto">
+            Artisan selections of the finest fruits and nuts, carefully curated for discerning palates
           </p>
         </div>
-        <ProductGrid products={products} onProductClick={handleProductClick} />
+        
+        <ProductGrid products={products} onAddToBasket={handleAddToBasket} />
       </main>
-      <AdminButton onClick={handleAdminClick} />
+      
+      <footer className="border-t border-card-border bg-white py-12">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 text-center">
+          <p className="text-sm font-sans tracking-wide uppercase text-gray-500">
+            © 2025 The Nosh Co. · South Africa
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

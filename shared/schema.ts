@@ -12,9 +12,8 @@ export const users = pgTable("users", {
 export const products = pgTable("products", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: text("name").notNull(),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
-  unit: text("unit").notNull(),
-  stock: integer("stock").notNull().default(0),
+  price500g: numeric("price_500g", { precision: 10, scale: 2 }).notNull(),
+  price1kg: numeric("price_1kg", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"),
   isSpecial: boolean("is_special").notNull().default(false),
 });

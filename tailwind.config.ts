@@ -16,9 +16,13 @@ export default {
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
-        orange: {
-          500: "#f97316",
-          600: "#ea580c",
+        sage: {
+          DEFAULT: "#8B9F8D",
+          light: "#B5C4B6",
+        },
+        cream: {
+          DEFAULT: "#F5F3EE",
+          dark: "#E5E3DF",
         },
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",

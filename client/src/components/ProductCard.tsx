@@ -1,23 +1,30 @@
 import { type Product } from "@shared/schema";
+import { useState } from "react";
 
 interface ProductCardProps {
   product: Product;
-  onClick?: () => void;
+  onAddToBasket?: (productId: number, size: '500g' | '1kg') => void;
 }
 
-export default function ProductCard({ product, onClick }: ProductCardProps) {
+export default function ProductCard({ product, onAddToBasket }: ProductCardProps) {
+  const [hoveredSize, setHoveredSize] = useState<'500g' | '1kg' | null>(null);
+
   const formatPrice = (price: string) => {
     const numPrice = parseFloat(price);
     return `R ${numPrice.toFixed(2)}`;
   };
 
+  const handleSizeClick = (size: '500g' | '1kg') => {
+    console.log(`Added ${product.name} - ${size} to basket`);
+    onAddToBasket?.(product.id, size);
+  };
+
   return (
     <div
-      onClick={onClick}
-      className="bg-white rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden"
+      className="bg-white border border-card-border hover:border-foreground transition-all duration-300"
       data-testid={`card-product-${product.id}`}
     >
-      <div className="relative aspect-square overflow-hidden rounded-t-lg bg-gradient-to-br from-green-50 to-green-100">
+      <div className="relative aspect-[4/5] overflow-hidden bg-stone-50">
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
@@ -26,36 +33,79 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
             data-testid={`img-product-${product.id}`}
           />
         ) : (
-          <div className="flex items-center justify-center w-full h-full text-6xl text-gray-400">
-            🍎
+          <div className="flex items-center justify-center w-full h-full">
+            <svg 
+              className="w-24 h-24 text-sage/30" 
+              viewBox="0 0 100 100" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1"
+            >
+              <circle cx="50" cy="40" r="15" />
+              <path d="M 50 25 Q 35 15, 30 30" />
+              <path d="M 50 25 Q 65 15, 70 30" />
+              <path d="M 30 30 Q 25 45, 35 55" />
+              <path d="M 70 30 Q 75 45, 65 55" />
+              <path d="M 35 55 Q 40 65, 50 70" />
+              <path d="M 65 55 Q 60 65, 50 70" />
+            </svg>
           </div>
         )}
         {product.isSpecial && (
-          <span
-            className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm"
+          <div 
+            className="absolute top-4 left-4 bg-stone-100 border border-sage px-4 py-1.5"
             data-testid={`badge-special-${product.id}`}
           >
-            Special
-          </span>
+            <span className="text-xs font-sans uppercase tracking-widest text-foreground">
+              Special
+            </span>
+          </div>
         )}
       </div>
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2" data-testid={`text-product-name-${product.id}`}>
+      
+      <div className="p-6">
+        <h3 
+          className="text-lg md:text-xl font-serif font-normal tracking-wide text-foreground mb-4" 
+          data-testid={`text-product-name-${product.id}`}
+        >
           {product.name}
         </h3>
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-xl font-bold text-gray-900" data-testid={`text-price-${product.id}`}>
-              <span className="text-base font-normal text-gray-700">R</span> {parseFloat(product.price).toFixed(2)}
-            </p>
-            <p className="text-sm text-gray-600" data-testid={`text-unit-${product.id}`}>
-              {product.unit}
-            </p>
-          </div>
+        
+        <div className="flex items-stretch divide-x divide-stone-200">
+          <button
+            onClick={() => handleSizeClick('500g')}
+            onMouseEnter={() => setHoveredSize('500g')}
+            onMouseLeave={() => setHoveredSize(null)}
+            className={`flex-1 py-3 px-4 text-center transition-colors ${
+              hoveredSize === '500g' ? 'bg-stone-50' : ''
+            }`}
+            data-testid={`button-add-500g-${product.id}`}
+          >
+            <div className="text-xs font-sans tracking-wide uppercase text-gray-500 mb-1">
+              500g
+            </div>
+            <div className="text-base font-serif text-foreground" data-testid={`text-price-500g-${product.id}`}>
+              {formatPrice(product.price500g)}
+            </div>
+          </button>
+          
+          <button
+            onClick={() => handleSizeClick('1kg')}
+            onMouseEnter={() => setHoveredSize('1kg')}
+            onMouseLeave={() => setHoveredSize(null)}
+            className={`flex-1 py-3 px-4 text-center transition-colors ${
+              hoveredSize === '1kg' ? 'bg-stone-50' : ''
+            }`}
+            data-testid={`button-add-1kg-${product.id}`}
+          >
+            <div className="text-xs font-sans tracking-wide uppercase text-gray-500 mb-1">
+              1kg
+            </div>
+            <div className="text-base font-serif text-foreground" data-testid={`text-price-1kg-${product.id}`}>
+              {formatPrice(product.price1kg)}
+            </div>
+          </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2" data-testid={`text-stock-${product.id}`}>
-          {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-        </p>
       </div>
     </div>
   );

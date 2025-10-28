@@ -6,37 +6,34 @@ export default function ProductGridExample() {
     {
       id: 1,
       name: "Premium Cashews",
-      price: "220.00",
-      unit: "/kg",
-      stock: 50,
+      price500g: "110.00",
+      price1kg: "220.00",
       imageUrl: null,
       isSpecial: true,
     },
     {
       id: 2,
       name: "Fresh Strawberries",
-      price: "85.00",
-      unit: "/pack",
-      stock: 30,
+      price500g: "42.50",
+      price1kg: "85.00",
       imageUrl: null,
       isSpecial: false,
     },
     {
       id: 3,
       name: "Roasted Almonds",
-      price: "180.00",
-      unit: "/kg",
-      stock: 25,
+      price500g: "90.00",
+      price1kg: "180.00",
       imageUrl: null,
       isSpecial: false,
     },
   ];
 
   return (
-    <div className="p-4">
+    <div className="p-8 bg-background">
       <ProductGrid 
         products={mockProducts} 
-        onProductClick={(product) => console.log('Product clicked:', product.name)}
+        onAddToBasket={(id, size) => console.log(`Added product ${id} - ${size}`)}
       />
     </div>
   );
