@@ -1,5 +1,7 @@
 import { X, Plus, Minus, Trash2 } from "lucide-react";
+import { useLocation } from "wouter";
 import { useBasket } from "@/contexts/BasketContext";
+import { Button } from "@/components/ui/button";
 
 interface BasketModalProps {
   isOpen: boolean;
@@ -7,6 +9,7 @@ interface BasketModalProps {
 }
 
 export default function BasketModal({ isOpen, onClose }: BasketModalProps) {
+  const [, setLocation] = useLocation();
   const { items, updateQuantity, removeItem, getTotalPrice, clearBasket } = useBasket();
 
   if (!isOpen) return null;
@@ -126,23 +129,24 @@ export default function BasketModal({ isOpen, onClose }: BasketModalProps) {
               </span>
             </div>
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="outline"
                 onClick={clearBasket}
-                className="flex-1 border border-card-border text-foreground py-3 px-6 text-sm font-sans tracking-widest uppercase hover:bg-stone-50 transition-colors"
+                className="flex-1 text-sm font-sans tracking-widest uppercase"
                 data-testid="button-clear-basket"
               >
                 Clear Basket
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
-                  console.log('Proceeding to checkout with items:', items);
-                  alert('Checkout functionality coming in next unit!');
+                  onClose();
+                  setLocation('/checkout');
                 }}
-                className="flex-1 bg-black text-white py-3 px-6 text-sm font-sans tracking-widest uppercase hover:bg-gray-900 transition-colors"
+                className="flex-1 text-sm font-sans tracking-widest uppercase"
                 data-testid="button-checkout"
               >
                 Checkout
-              </button>
+              </Button>
             </div>
           </div>
         )}

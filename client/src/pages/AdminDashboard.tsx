@@ -66,10 +66,11 @@ export default function AdminDashboard() {
     }
 
     const productList = specialProducts
-      .map(p => `• ${p.name} - R${p.price1kg}/kg`)
+      .map(p => `${p.name} - R${p.price1kg}/kg`)
       .join('\n');
 
-    const message = `*Today's Special at The Nosh Co.*\n\n${productList}\n\nOrder now! Visit our store.`;
+    const replitUrl = window.location.origin;
+    const message = `The Nosh Co. Special!\n\n${productList}\n\nLimited time only!\n${replitUrl}`;
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
 

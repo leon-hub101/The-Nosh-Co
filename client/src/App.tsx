@@ -6,15 +6,20 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BasketProvider } from "@/contexts/BasketContext";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { SpecialsProvider } from "@/contexts/SpecialsContext";
+import { OrderProvider } from "@/contexts/OrderContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Home from "@/pages/Home";
 import AdminDashboard from "@/pages/AdminDashboard";
+import Checkout from "@/pages/Checkout";
+import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/checkout" component={Checkout} />
+      <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/admin">
         <ProtectedRoute>
           <AdminDashboard />
@@ -32,8 +37,10 @@ function App() {
         <AdminProvider>
           <SpecialsProvider>
             <BasketProvider>
-              <Toaster />
-              <Router />
+              <OrderProvider>
+                <Toaster />
+                <Router />
+              </OrderProvider>
             </BasketProvider>
           </SpecialsProvider>
         </AdminProvider>
