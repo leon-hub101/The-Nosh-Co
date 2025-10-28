@@ -44,7 +44,7 @@ export function usePush() {
   };
 
   // Send test push notification (admin only)
-  const sendTestPush = async (serverKey?: string) => {
+  const sendTestPush = async () => {
     if (!token) {
       toast({
         title: "No Token",
@@ -55,18 +55,18 @@ export function usePush() {
     }
 
     try {
-      // Send via FCM REST API
+      // Send via backend stub endpoint
+      // In production, this would use Firebase Admin SDK server-side
       const success = await sendPushNotification(
         token,
         'The Nosh Co.',
-        'New specials are now available!',
-        serverKey
+        'New specials are now available!'
       );
 
       if (success) {
         toast({
-          title: "Notification Sent",
-          description: serverKey ? "Push sent via FCM" : "Demo notification sent",
+          title: "Notification Logged",
+          description: "Notification request sent to backend (stub mode)",
         });
         return true;
       } else {
@@ -88,9 +88,9 @@ export function usePush() {
     }
   };
 
-  // Listen for foreground messages
+  // Register service worker and listen for foreground messages
   useEffect(() => {
-    // Register service worker for FCM
+    // Register service worker for FCM (only once)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/firebase-messaging-sw.js')
@@ -102,8 +102,8 @@ export function usePush() {
         });
     }
 
-    // Listen for foreground messages
-    onForegroundMessage((payload: unknown) => {
+    // Listen for foreground messages and get unsubscribe function
+    const unsubscribe = onForegroundMessage((payload: unknown) => {
       const data = payload as { notification?: { title?: string; body?: string } };
       
       toast({
@@ -119,6 +119,11 @@ export function usePush() {
         });
       }
     });
+
+    // Cleanup: unsubscribe when component unmounts
+    return () => {
+      unsubscribe();
+    };
   }, [toast]);
 
   // Check if we already have a token

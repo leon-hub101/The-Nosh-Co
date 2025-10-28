@@ -67,62 +67,56 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
 /**
  * Listen for foreground messages
  * @param callback Function to call when message is received
+ * @returns Unsubscribe function
  */
-export const onForegroundMessage = (callback: (payload: unknown) => void) => {
+export const onForegroundMessage = (callback: (payload: unknown) => void): (() => void) => {
   if (!messaging) {
     console.warn('FCM not initialized. No foreground messages will be received.');
-    return;
+    return () => {}; // Return no-op unsubscribe
   }
 
-  onMessage(messaging, (payload) => {
+  const unsubscribe = onMessage(messaging, (payload) => {
     console.log('Foreground message received:', payload);
     callback(payload);
   });
+
+  return unsubscribe;
 };
 
 /**
- * Send push notification via FCM REST API
+ * Send push notification via backend stub
+ * In production, this would be handled entirely server-side via Firebase Admin SDK
  * @param token FCM device token
  * @param title Notification title
  * @param body Notification body
- * @param serverKey FCM server key from Firebase Console
  */
 export const sendPushNotification = async (
   token: string,
   title: string,
-  body: string,
-  serverKey?: string
+  body: string
 ): Promise<boolean> => {
-  // If no server key provided, this is demo mode
-  if (!serverKey) {
-    console.log('Demo mode: Would send notification:', { token, title, body });
-    return true;
-  }
-
   try {
-    const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+    // Call backend stub endpoint
+    // In production, this would use Firebase Admin SDK server-side
+    const response = await fetch('/api/notifications/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `key=${serverKey}`
       },
       body: JSON.stringify({
-        to: token,
-        notification: {
-          title,
-          body,
-          icon: '/icon-192x192.png'
-        }
+        token,
+        title,
+        body
       })
     });
 
     if (!response.ok) {
-      throw new Error(`FCM API error: ${response.status}`);
+      throw new Error(`Backend API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Notification sent successfully:', data);
-    return true;
+    console.log('Notification request response:', data);
+    return data.success;
   } catch (error) {
     console.error('Error sending push notification:', error);
     return false;

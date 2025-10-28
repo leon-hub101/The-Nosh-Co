@@ -33,31 +33,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // FCM notification endpoint (stub for sending notifications)
-  // TODO (PRODUCTION): Move to proper backend service
+  // TODO (PRODUCTION): Move to proper backend service with Firebase Admin SDK
   app.post("/api/notifications/send", async (req: Request, res: Response) => {
     try {
-      const { token, title, body, serverKey } = req.body;
-
-      if (!serverKey) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "FCM server key required" 
-        });
-      }
+      const { token, title, body } = req.body;
 
       // This would normally be done server-side with the Firebase Admin SDK
       console.log("=".repeat(80));
-      console.log("FCM Push Notification Request:");
+      console.log("FCM Push Notification Request (STUB MODE):");
       console.log("Timestamp:", new Date().toISOString());
       console.log("Token:", token);
       console.log("Title:", title);
       console.log("Body:", body);
+      console.log("NOTE: In production, this would send via Firebase Admin SDK");
       console.log("=".repeat(80));
 
-      // Stub response
+      // Stub response - always succeeds in development mode
       res.json({
         success: true,
-        message: "Notification sent (stub mode)"
+        message: "Notification logged (stub mode - no actual notification sent)"
       });
     } catch (error) {
       console.error("FCM Send Error:", error);
