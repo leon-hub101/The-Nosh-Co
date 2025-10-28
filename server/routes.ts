@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { DbStorage } from "./db-storage";
 import bcrypt from "bcrypt";
-import { generatePayFastSignature, verifyPayFastSignature, getPayFastConfig } from "./payfast";
+import { generatePayFastSignature, verifyPayFastSignature, getPayFastConfig, validatePayFastPayment } from "./payfast";
+import { requireAuth, requireAdmin } from "./middleware";
 import "./types";
 
 // Use database storage in production
@@ -12,13 +13,23 @@ const dbStorage = new DbStorage();
 export async function registerRoutes(app: Express): Promise<Server> {
   // ===== AUTHENTICATION ROUTES =====
   
-  // Register new user
+  // Register new user (always creates customer role)
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password, role } = req.body;
+      const { email, password } = req.body;
       
       if (!email || !password) {
         return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      // Validate email format
+      if (!email.includes("@")) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
       }
 
       // Check if user already exists
@@ -30,11 +41,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
+      // Create user - ALWAYS as customer, never allow client to set role
       const user = await dbStorage.createUser({
         email,
         password: hashedPassword,
-        role: role || "customer",
+        role: "customer",
       });
 
       // Set session
@@ -167,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update product special status (admin only)
-  app.patch("/api/products/:id/special", async (req: Request, res: Response) => {
+  app.patch("/api/products/:id/special", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const { isSpecial } = req.body;
@@ -186,18 +197,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== ORDERS ROUTES =====
   
-  // Create order
+  // Create order - calculates total from database prices to prevent manipulation
   app.post("/api/orders", async (req: Request, res: Response) => {
     try {
-      const { total, items, pudoLocation, paymentMethod, customerEmail, customerPhone } = req.body;
+      const { items, pudoLocation, paymentMethod, customerEmail, customerPhone } = req.body;
       
-      if (!total || !items || items.length === 0) {
-        return res.status(400).json({ error: "Total and items are required" });
+      if (!items || items.length === 0) {
+        return res.status(400).json({ error: "Items are required" });
+      }
+
+      // Calculate total from database prices (never trust client)
+      let calculatedTotal = 0;
+      const validatedItems = [];
+
+      for (const item of items) {
+        const product = await dbStorage.getProduct(item.id);
+        if (!product) {
+          return res.status(400).json({ error: `Product ${item.id} not found` });
+        }
+
+        // Get correct price based on size
+        const unitPrice = item.size === "1kg" 
+          ? parseFloat(product.price1kg)
+          : parseFloat(product.price500g);
+
+        const itemTotal = unitPrice * item.quantity;
+        calculatedTotal += itemTotal;
+
+        validatedItems.push({
+          id: item.id,
+          name: product.name,
+          size: item.size,
+          quantity: item.quantity,
+          unitPrice,
+          total: itemTotal,
+        });
       }
 
       const order = await dbStorage.createOrder({
-        total: total.toString(),
-        items,
+        total: calculatedTotal.toFixed(2),
+        items: validatedItems,
         pudoLocation: pudoLocation || null,
         paymentMethod: paymentMethod || null,
         customerEmail: customerEmail || null,
@@ -230,9 +269,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all orders (admin only)
-  app.get("/api/orders", async (req: Request, res: Response) => {
+  app.get("/api/orders", requireAdmin, async (req: Request, res: Response) => {
     try {
-      // TODO: Add authentication check for admin role
       const orders = await dbStorage.getAllOrders();
       res.json(orders);
     } catch (error) {
@@ -241,8 +279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update order status
-  app.patch("/api/orders/:id/status", async (req: Request, res: Response) => {
+  // Update order status (admin only)
+  app.patch("/api/orders/:id/status", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { status, paymentVerified, payfastTransactionId } = req.body;
@@ -261,13 +299,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== PAYFAST ROUTES =====
   
-  // Create PayFast payment
+  // Create PayFast payment - gets amount from database to prevent manipulation
   app.post("/api/payfast/create", async (req: Request, res: Response) => {
     try {
-      const { orderId, amount, items } = req.body;
+      const { orderId } = req.body;
       
-      if (!orderId || !amount) {
-        return res.status(400).json({ error: "Order ID and amount are required" });
+      if (!orderId) {
+        return res.status(400).json({ error: "Order ID is required" });
+      }
+
+      // Get order from database to verify amount
+      const order = await dbStorage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
       }
 
       const config = getPayFastConfig();
@@ -281,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return_url: `${appUrl}/checkout/success?orderId=${orderId}`,
         cancel_url: `${appUrl}/checkout`,
         notify_url: `${appUrl}/api/payfast/notify`,
-        amount: amount.toString(),
+        amount: order.total, // Use amount from database, not client
         item_name: `The Nosh Co. Order #${orderId}`,
         m_payment_id: orderId,
       };
@@ -300,6 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PayFast ITN (Instant Transaction Notification) endpoint
+  // Handles form-encoded data from PayFast
   app.post("/api/payfast/notify", async (req: Request, res: Response) => {
     try {
       const payload = req.body;
@@ -310,44 +355,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Payload:", JSON.stringify(payload, null, 2));
       console.log("=".repeat(80));
 
-      // Verify signature
+      // Step 1: Verify signature
       const config = getPayFastConfig();
-      const isValid = verifyPayFastSignature(payload, config.passphrase);
+      const signatureValid = verifyPayFastSignature(payload, config.passphrase);
 
-      if (!isValid) {
+      if (!signatureValid) {
         console.error("❌ Invalid PayFast signature");
         return res.status(400).send("Invalid signature");
       }
 
-      // Verify merchant ID
+      // Step 2: Verify merchant ID
       if (payload.merchant_id !== config.merchantId) {
         console.error("❌ Invalid merchant ID");
         return res.status(400).send("Invalid merchant ID");
+      }
+
+      // Step 3: Server-to-server validation with PayFast
+      // Must use exact raw body that PayFast sent (not rebuilt)
+      const rawBody = req.rawBody as string;
+      if (!rawBody) {
+        console.error("❌ No raw body available for validation");
+        return res.status(400).send("No raw body");
+      }
+      
+      const serverValid = await validatePayFastPayment(rawBody);
+      if (!serverValid) {
+        console.error("❌ PayFast server validation failed");
+        return res.status(400).send("Server validation failed");
       }
 
       // Extract payment info
       const orderId = payload.m_payment_id;
       const paymentStatus = payload.payment_status;
       const transactionId = payload.pf_payment_id;
-      const amount = payload.amount_gross;
+      const amountGross = parseFloat(payload.amount_gross);
 
       console.log(`✅ Valid ITN for Order ${orderId}`);
       console.log(`   Status: ${paymentStatus}`);
       console.log(`   Transaction ID: ${transactionId}`);
-      console.log(`   Amount: R ${amount}`);
+      console.log(`   Amount: R ${amountGross}`);
 
-      // Update order status if payment is complete
-      if (paymentStatus === "COMPLETE" && orderId) {
-        try {
-          await dbStorage.updateOrderStatus(
-            orderId,
-            "paid",
-            true,
-            transactionId
-          );
-          console.log(`✅ Order ${orderId} marked as paid`);
-        } catch (error) {
-          console.error(`❌ Failed to update order ${orderId}:`, error);
+      // Step 4: Verify payment amount matches order
+      if (orderId) {
+        const order = await dbStorage.getOrder(orderId);
+        if (!order) {
+          console.error(`❌ Order ${orderId} not found`);
+          return res.status(404).send("Order not found");
+        }
+
+        const orderTotal = parseFloat(order.total);
+        if (Math.abs(amountGross - orderTotal) > 0.01) {
+          console.error(`❌ Amount mismatch: expected R${orderTotal}, got R${amountGross}`);
+          return res.status(400).send("Amount mismatch");
+        }
+
+        // Step 5: Update order status if payment is complete
+        if (paymentStatus === "COMPLETE") {
+          try {
+            await dbStorage.updateOrderStatus(
+              orderId,
+              "paid",
+              true,
+              transactionId
+            );
+            console.log(`✅ Order ${orderId} marked as paid`);
+          } catch (error) {
+            console.error(`❌ Failed to update order ${orderId}:`, error);
+          }
         }
       }
 

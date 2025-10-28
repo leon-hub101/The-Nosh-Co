@@ -84,6 +84,10 @@ export function getPayFastConfig() {
   const baseUrl = mode === "production" 
     ? "https://www.payfast.co.za/eng/process"
     : "https://sandbox.payfast.co.za/eng/process";
+  
+  const validateUrl = mode === "production"
+    ? "https://www.payfast.co.za/eng/query/validate"
+    : "https://sandbox.payfast.co.za/eng/query/validate";
 
   return {
     merchantId,
@@ -91,5 +95,32 @@ export function getPayFastConfig() {
     passphrase,
     mode,
     baseUrl,
+    validateUrl,
   };
+}
+
+/**
+ * Validate PayFast payment with server-to-server request
+ * https://developers.payfast.co.za/docs#step_3_notify
+ */
+export async function validatePayFastPayment(
+  pfParamString: string
+): Promise<boolean> {
+  const config = getPayFastConfig();
+  
+  try {
+    const response = await fetch(config.validateUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: pfParamString,
+    });
+
+    const text = await response.text();
+    return text === "VALID";
+  } catch (error) {
+    console.error("PayFast validation error:", error);
+    return false;
+  }
 }
