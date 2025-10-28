@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Share2, Send, LogOut } from "lucide-react";
+import { ArrowLeft, Share2, Send, LogOut, Package } from "lucide-react";
 import { type Product } from "@shared/schema";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
@@ -121,14 +121,14 @@ export default function AdminDashboard() {
 
       <main className="max-w-6xl mx-auto px-6 md:px-12 py-12">
         {/* Action Buttons */}
-        <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="mb-12 grid grid-cols-1 md:grid-cols-3 gap-6">
           <Button
             onClick={handleWhatsAppShare}
             className="bg-[#25D366] text-white border-[#25D366] h-auto py-6 text-base font-sans tracking-wide uppercase"
             data-testid="button-whatsapp-share"
           >
             <Share2 className="w-5 h-5 mr-3" />
-            Share Today's Special on WhatsApp
+            Share on WhatsApp
           </Button>
 
           <Button
@@ -138,7 +138,17 @@ export default function AdminDashboard() {
             data-testid="button-send-push"
           >
             <Send className="w-5 h-5 mr-3" />
-            {hasPermission ? 'Send Test Push Notification' : 'Enable Push Notifications'}
+            {hasPermission ? 'Send Push Notification' : 'Enable Notifications'}
+          </Button>
+
+          <Button
+            onClick={() => setLocation('/orders')}
+            variant="outline"
+            className="h-auto py-6 text-base font-sans tracking-wide uppercase"
+            data-testid="button-view-orders"
+          >
+            <Package className="w-5 h-5 mr-3" />
+            View Order History
           </Button>
         </div>
 

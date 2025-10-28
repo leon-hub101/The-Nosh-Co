@@ -12,6 +12,7 @@ import Home from "@/pages/Home";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Checkout from "@/pages/Checkout";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
+import OrderHistory from "@/pages/OrderHistory";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,11 @@ function Router() {
       <Route path="/admin">
         <ProtectedRoute>
           <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/orders">
+        <ProtectedRoute>
+          <OrderHistory />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

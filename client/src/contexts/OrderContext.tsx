@@ -28,12 +28,14 @@ interface OrderContextType {
   completeOrder: (orderId: string) => void;
   failOrder: (orderId: string) => void;
   clearOrder: () => void;
+  getAllOrders: () => Order[];
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [currentOrder, setCurrentOrder] = useLocalStorage<Order | null>('currentOrder', null);
+  const [orderHistory, setOrderHistory] = useLocalStorage<Order[]>('orderHistory', []);
 
   const createOrder = (items: any[], total: number, pudoLocation: PudoLocation | null): string => {
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -51,10 +53,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const completeOrder = (orderId: string) => {
     if (currentOrder && currentOrder.id === orderId) {
-      setCurrentOrder({
+      const updatedOrder = {
         ...currentOrder,
-        status: 'paid',
-      });
+        status: 'paid' as const,
+      };
+      setCurrentOrder(updatedOrder);
+      
+      // Add to order history
+      setOrderHistory([...orderHistory, updatedOrder]);
     }
   };
 
@@ -71,6 +77,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     setCurrentOrder(null);
   };
 
+  const getAllOrders = (): Order[] => {
+    return orderHistory;
+  };
+
   return (
     <OrderContext.Provider value={{
       currentOrder,
@@ -78,6 +88,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       completeOrder,
       failOrder,
       clearOrder,
+      getAllOrders,
     }}>
       {children}
     </OrderContext.Provider>
