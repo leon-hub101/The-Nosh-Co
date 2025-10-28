@@ -1,13 +1,14 @@
 import { type Product } from "@shared/schema";
 import { useState } from "react";
+import { useBasket } from "@/contexts/BasketContext";
 
 interface ProductCardProps {
   product: Product;
-  onAddToBasket?: (productId: number, size: '500g' | '1kg') => void;
 }
 
-export default function ProductCard({ product, onAddToBasket }: ProductCardProps) {
+export default function ProductCard({ product }: ProductCardProps) {
   const [hoveredSize, setHoveredSize] = useState<'500g' | '1kg' | null>(null);
+  const { addItem } = useBasket();
 
   const formatPrice = (price: string) => {
     const numPrice = parseFloat(price);
@@ -15,8 +16,8 @@ export default function ProductCard({ product, onAddToBasket }: ProductCardProps
   };
 
   const handleSizeClick = (size: '500g' | '1kg') => {
-    console.log(`Added ${product.name} - ${size} to basket`);
-    onAddToBasket?.(product.id, size);
+    const price = size === '500g' ? product.price500g : product.price1kg;
+    addItem(product.id, product.name, size, price);
   };
 
   return (

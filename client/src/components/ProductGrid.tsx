@@ -3,10 +3,9 @@ import ProductCard from "./ProductCard";
 
 interface ProductGridProps {
   products: Product[];
-  onAddToBasket?: (productId: number, size: '500g' | '1kg') => void;
 }
 
-export default function ProductGrid({ products, onAddToBasket }: ProductGridProps) {
+export default function ProductGrid({ products }: ProductGridProps) {
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
@@ -36,7 +35,6 @@ export default function ProductGrid({ products, onAddToBasket }: ProductGridProp
         <ProductCard
           key={product.id}
           product={product}
-          onAddToBasket={onAddToBasket}
         />
       ))}
     </div>
