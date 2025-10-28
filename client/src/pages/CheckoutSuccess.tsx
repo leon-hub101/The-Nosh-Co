@@ -13,12 +13,20 @@ export default function CheckoutSuccess() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get order ID from URL params
+    // TODO (PRODUCTION): Replace with server-side verification
+    // This MVP implementation trusts client-side URL params.
+    // Production must:
+    // 1. Implement server-side PayFast ITN handler
+    // 2. Verify PayFast signature on backend
+    // 3. Update order status in database only after verification
+    // 4. Fetch verified order status from API instead of localStorage
+    
+    // Get order ID from URL params (SANDBOX ONLY)
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('order');
 
     if (orderId && currentOrder && currentOrder.id === orderId) {
-      // Mark order as completed
+      // Mark order as completed (SANDBOX ONLY - no verification)
       completeOrder(orderId);
       // Clear the basket
       clearBasket();

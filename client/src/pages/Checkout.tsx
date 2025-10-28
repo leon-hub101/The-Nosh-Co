@@ -57,13 +57,22 @@ export default function Checkout() {
     const pudoLocation = PUDO_LOCATIONS.find(p => p.id === selectedPudo) || null;
     const orderId = createOrder(items, totalPrice, pudoLocation);
 
-    // PayFast sandbox integration
+    // TODO (PRODUCTION): Move PayFast integration to secure backend
+    // This MVP uses client-side form submission to sandbox.
+    // Production must:
+    // 1. Move merchant credentials to server environment variables
+    // 2. Generate payment signature on backend
+    // 3. Create payment via server API endpoint
+    // 4. Implement ITN (Instant Transaction Notification) handler
+    // 5. Verify payment signatures server-side
+    
+    // PayFast sandbox integration (MVP ONLY)
     const paymentForm = document.createElement('form');
     paymentForm.method = 'POST';
     paymentForm.action = 'https://sandbox.payfast.co.za/eng/process';
     paymentForm.target = '_self';
 
-    // PayFast required fields (sandbox credentials)
+    // PayFast required fields (SANDBOX CREDENTIALS - NOT FOR PRODUCTION)
     const fields = {
       merchant_id: '10000100', // PayFast sandbox merchant ID
       merchant_key: '46f0cd694581a', // PayFast sandbox merchant key
@@ -72,7 +81,7 @@ export default function Checkout() {
       item_description: items.map(i => `${i.productName} ${i.size} (x${i.quantity})`).join(', '),
       return_url: `${window.location.origin}/checkout/success?order=${orderId}`,
       cancel_url: `${window.location.origin}/checkout`,
-      notify_url: `${window.location.origin}/api/payfast/notify`,
+      notify_url: `${window.location.origin}/api/payfast/notify`, // TODO: Implement server endpoint
     };
 
     Object.entries(fields).forEach(([key, value]) => {
