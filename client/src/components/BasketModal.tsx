@@ -1,5 +1,6 @@
 import { X, Plus, Minus, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 import { useBasket } from "@/contexts/BasketContext";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +13,20 @@ export default function BasketModal({ isOpen, onClose }: BasketModalProps) {
   const [, setLocation] = useLocation();
   const { items, updateQuantity, removeItem, getTotalPrice, clearBasket } = useBasket();
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const formatPrice = (price: number) => {
@@ -19,25 +34,36 @@ export default function BasketModal({ isOpen, onClose }: BasketModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="basket-modal-title"
+    >
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         data-testid="backdrop-basket-modal"
+        aria-hidden="true"
       />
 
       {/* Modal */}
-      <div className="relative bg-white border border-card-border max-w-2xl w-full max-h-[90vh] flex flex-col" data-testid="modal-basket">
+      <div className="relative z-10 bg-white border border-card-border max-w-2xl w-full max-h-[90vh] flex flex-col" data-testid="modal-basket">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-card-border">
-          <h2 className="text-2xl font-serif font-light tracking-wide text-foreground">
+          <h2 
+            id="basket-modal-title"
+            className="text-2xl font-serif font-light tracking-wide text-foreground"
+          >
             Your Basket
           </h2>
           <button
             onClick={onClose}
             className="p-1 hover:opacity-70 transition-opacity"
             data-testid="button-close-basket"
+            aria-label="Close basket"
+            type="button"
           >
             <X className="w-5 h-5" />
           </button>
