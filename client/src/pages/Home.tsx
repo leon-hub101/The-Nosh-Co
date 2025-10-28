@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { type Product } from "@shared/schema";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Settings } from "lucide-react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import ProductGrid from "@/components/ProductGrid";
@@ -8,15 +9,18 @@ import AdminLoginModal from "@/components/AdminLoginModal";
 import BasketModal from "@/components/BasketModal";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
+import { useOffline } from "@/hooks/useOffline";
 import cashewsImg from "@assets/generated_images/Premium_cashew_nuts_product_photo_c8b18a7a.png";
 import strawberriesImg from "@assets/generated_images/Fresh_organic_strawberries_product_photo_dd4d1d44.png";
 import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_28680ce6.png";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
-  const { login } = useAdmin();
+  const { login, isAdminLoggedIn } = useAdmin();
   const { toggleSpecial } = useSpecials();
+  const { isOffline } = useOffline();
 
   // TODO: remove mock functionality - replace with API call
   const [products] = useState<Product[]>([
@@ -92,13 +96,23 @@ export default function Home() {
       </footer>
 
       {/* Floating Admin Button */}
-      <button
-        onClick={() => setIsAdminModalOpen(true)}
-        className="fixed bottom-8 left-6 z-40 w-16 h-16 bg-black text-white flex items-center justify-center shadow-2xl border-2 border-white hover:bg-gray-900 transition-colors"
-        data-testid="button-admin-float"
-      >
-        <ShieldCheck className="w-6 h-6" />
-      </button>
+      {!isAdminLoggedIn ? (
+        <button
+          onClick={() => setIsAdminModalOpen(true)}
+          className="fixed bottom-8 left-6 z-40 w-16 h-16 bg-black text-white flex items-center justify-center shadow-2xl border-2 border-white hover:bg-gray-900 transition-colors"
+          data-testid="button-admin-float"
+        >
+          <ShieldCheck className="w-6 h-6" />
+        </button>
+      ) : (
+        <button
+          onClick={() => setLocation('/admin')}
+          className="fixed bottom-8 left-6 z-40 w-16 h-16 bg-black text-white flex items-center justify-center shadow-2xl border-2 border-white hover:bg-gray-900 transition-colors"
+          data-testid="button-admin-dashboard"
+        >
+          <Settings className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Modals */}
       <AdminLoginModal

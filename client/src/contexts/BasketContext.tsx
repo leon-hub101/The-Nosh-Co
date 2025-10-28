@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useEffect } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export interface BasketItem {
   productId: number;
@@ -21,7 +22,7 @@ interface BasketContextType {
 const BasketContext = createContext<BasketContextType | undefined>(undefined);
 
 export function BasketProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<BasketItem[]>([]);
+  const [items, setItems] = useLocalStorage<BasketItem[]>('basket', []);
 
   const addItem = (productId: number, productName: string, size: '500g' | '1kg', price: string) => {
     setItems(currentItems => {

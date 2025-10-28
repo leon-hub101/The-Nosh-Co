@@ -6,13 +6,20 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BasketProvider } from "@/contexts/BasketContext";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { SpecialsProvider } from "@/contexts/SpecialsContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Home from "@/pages/Home";
+import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/admin">
+        <ProtectedRoute>
+          <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
