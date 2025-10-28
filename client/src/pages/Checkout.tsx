@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, MapPin, CreditCard } from "lucide-react";
 import { useBasket } from "@/contexts/BasketContext";
@@ -30,9 +30,97 @@ export default function Checkout() {
   const { toast } = useToast();
   const [selectedPudo, setSelectedPudo] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [applePayAvailable, setApplePayAvailable] = useState(false);
 
   const totalPrice = getTotalPrice();
 
+  // Check Apple Pay availability
+  useEffect(() => {
+    // @ts-ignore - ApplePaySession is only available on Apple devices
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments()) {
+      setApplePayAvailable(true);
+    }
+  }, []);
+
+  // Apple Pay checkout handler
+  const handleApplePay = async () => {
+    if (!selectedPudo) {
+      toast({
+        title: "Select Pickup Location",
+        description: "Please choose a Pudo locker for delivery.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Create payment request
+      const paymentMethods = [{
+        supportedMethods: 'https://apple.com/apple-pay',
+        data: {
+          version: 3,
+          merchantIdentifier: 'merchant.com.thenoshco',
+          merchantCapabilities: ['supports3DS', 'supportsCredit', 'supportsDebit'],
+          supportedNetworks: ['visa', 'masterCard', 'amex'],
+          countryCode: 'ZA'
+        }
+      }];
+
+      const paymentDetails = {
+        total: {
+          label: 'The Nosh Co.',
+          amount: {
+            currency: 'ZAR',
+            value: totalPrice.toFixed(2)
+          }
+        },
+        displayItems: items.map(item => ({
+          label: `${item.productName} ${item.size} (x${item.quantity})`,
+          amount: {
+            currency: 'ZAR',
+            value: (parseFloat(item.price) * item.quantity).toFixed(2)
+          }
+        }))
+      };
+
+      const paymentOptions = {
+        requestPayerName: true,
+        requestPayerEmail: true,
+      };
+
+      const request = new PaymentRequest(paymentMethods, paymentDetails);
+
+      // Show Apple Pay sheet
+      const response = await request.show();
+
+      // Process payment (mock for sandbox)
+      const pudoLocation = PUDO_LOCATIONS.find(p => p.id === selectedPudo) || null;
+      const orderId = createOrder(items, totalPrice, pudoLocation);
+
+      // Complete payment
+      await response.complete('success');
+
+      toast({
+        title: "Payment Successful",
+        description: "Your order has been confirmed!",
+      });
+
+      // Redirect to success page
+      setLocation(`/checkout/success?order=${orderId}`);
+    } catch (error) {
+      console.error('Apple Pay error:', error);
+      setIsProcessing(false);
+      toast({
+        title: "Payment Cancelled",
+        description: "Your payment was not processed.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // PayFast checkout handler
   const handleCheckout = async () => {
     if (!selectedPudo) {
       toast({
@@ -199,7 +287,7 @@ export default function Checkout() {
               </p>
             </div>
 
-            {/* Payment Button */}
+            {/* Payment Options */}
             <div className="bg-stone-50 border border-card-border p-6">
               <div className="flex items-center gap-2 mb-4">
                 <CreditCard className="w-5 h-5 text-foreground" />
@@ -207,6 +295,31 @@ export default function Checkout() {
                   Secure Payment
                 </p>
               </div>
+
+              {/* Apple Pay Button (if available) */}
+              {applePayAvailable && (
+                <div className="mb-6">
+                  <button
+                    onClick={handleApplePay}
+                    disabled={isProcessing}
+                    className="apple-pay-button apple-pay-button-black w-full"
+                    style={{
+                      height: '48px',
+                      borderRadius: '4px',
+                      cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      opacity: isProcessing ? 0.6 : 1
+                    }}
+                    data-testid="button-apple-pay"
+                    aria-label="Pay with Apple Pay"
+                  />
+                  <div className="flex items-center gap-2 my-4">
+                    <div className="flex-1 border-t border-card-border"></div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Or</span>
+                    <div className="flex-1 border-t border-card-border"></div>
+                  </div>
+                </div>
+              )}
+
               <p className="text-sm text-gray-600 mb-6">
                 You will be redirected to PayFast to complete your payment securely.
               </p>
