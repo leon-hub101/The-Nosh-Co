@@ -59,8 +59,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       };
       setCurrentOrder(updatedOrder);
       
-      // Add to order history
-      setOrderHistory([...orderHistory, updatedOrder]);
+      // Add to order history using functional update to ensure we have latest state
+      setOrderHistory((prevHistory) => [...prevHistory, updatedOrder]);
     }
   };
 
