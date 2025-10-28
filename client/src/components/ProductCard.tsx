@@ -1,6 +1,8 @@
 import { type Product } from "@shared/schema";
 import { useState } from "react";
 import { useBasket } from "@/contexts/BasketContext";
+import { useAdmin } from "@/contexts/AdminContext";
+import { useSpecials } from "@/contexts/SpecialsContext";
 
 interface ProductCardProps {
   product: Product;
@@ -9,6 +11,8 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const [hoveredSize, setHoveredSize] = useState<'500g' | '1kg' | null>(null);
   const { addItem } = useBasket();
+  const { isAdminLoggedIn } = useAdmin();
+  const { isSpecial, toggleSpecial } = useSpecials();
 
   const formatPrice = (price: string) => {
     const numPrice = parseFloat(price);
@@ -19,6 +23,12 @@ export default function ProductCard({ product }: ProductCardProps) {
     const price = size === '500g' ? product.price500g : product.price1kg;
     addItem(product.id, product.name, size, price);
   };
+
+  const handleToggleSpecial = () => {
+    toggleSpecial(product.id);
+  };
+
+  const productIsSpecial = isSpecial(product.id);
 
   return (
     <div
@@ -52,12 +62,12 @@ export default function ProductCard({ product }: ProductCardProps) {
             </svg>
           </div>
         )}
-        {product.isSpecial && (
+        {productIsSpecial && (
           <div 
-            className="absolute top-4 left-4 bg-stone-100 border border-sage px-4 py-1.5"
+            className="absolute top-4 left-4 bg-orange-500 px-4 py-1.5"
             data-testid={`badge-special-${product.id}`}
           >
-            <span className="text-xs font-sans uppercase tracking-widest text-foreground">
+            <span className="text-xs font-sans uppercase tracking-widest text-white">
               Special
             </span>
           </div>
@@ -71,6 +81,32 @@ export default function ProductCard({ product }: ProductCardProps) {
         >
           {product.name}
         </h3>
+
+        {isAdminLoggedIn && (
+          <div className="mb-4 flex items-center gap-3 pb-4 border-b border-stone-200">
+            <label 
+              htmlFor={`special-toggle-${product.id}`}
+              className="flex items-center gap-3 cursor-pointer"
+            >
+              <div className="relative">
+                <input
+                  id={`special-toggle-${product.id}`}
+                  type="checkbox"
+                  checked={productIsSpecial}
+                  onChange={handleToggleSpecial}
+                  className="sr-only peer"
+                  data-testid={`toggle-special-${product.id}`}
+                />
+                <div className="w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 peer-focus:ring-offset-2 peer-checked:bg-orange-500 transition-colors">
+                  <div className="dot absolute left-1 top-1 bg-white w-4 h-4 transition-transform peer-checked:translate-x-5"></div>
+                </div>
+              </div>
+              <span className="text-sm font-sans tracking-wide uppercase text-gray-700">
+                Special
+              </span>
+            </label>
+          </div>
+        )}
         
         <div className="flex items-stretch divide-x divide-stone-200">
           <button

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { type Product } from "@shared/schema";
 import { ShieldCheck } from "lucide-react";
 import Header from "@/components/Header";
@@ -6,6 +6,8 @@ import Hero from "@/components/Hero";
 import ProductGrid from "@/components/ProductGrid";
 import AdminLoginModal from "@/components/AdminLoginModal";
 import BasketModal from "@/components/BasketModal";
+import { useAdmin } from "@/contexts/AdminContext";
+import { useSpecials } from "@/contexts/SpecialsContext";
 import cashewsImg from "@assets/generated_images/Premium_cashew_nuts_product_photo_c8b18a7a.png";
 import strawberriesImg from "@assets/generated_images/Fresh_organic_strawberries_product_photo_dd4d1d44.png";
 import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_28680ce6.png";
@@ -13,7 +15,8 @@ import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_2
 export default function Home() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const { login } = useAdmin();
+  const { toggleSpecial } = useSpecials();
 
   // TODO: remove mock functionality - replace with API call
   const [products] = useState<Product[]>([
@@ -43,8 +46,21 @@ export default function Home() {
     },
   ]);
 
+  // Initialize specials from mock data on first load
+  useEffect(() => {
+    const stored = localStorage.getItem('specials');
+    if (!stored) {
+      // Set initial specials based on mock data
+      products.forEach(product => {
+        if (product.isSpecial) {
+          toggleSpecial(product.id);
+        }
+      });
+    }
+  }, []);
+
   const handleAdminLoginSuccess = () => {
-    setIsAdminLoggedIn(true);
+    login();
     console.log('Admin logged in successfully');
   };
 
