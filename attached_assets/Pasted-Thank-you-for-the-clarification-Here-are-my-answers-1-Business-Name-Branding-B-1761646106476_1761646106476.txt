@@ -1,0 +1,51 @@
+Thank you for the clarification. Here are my answers:
+
+1. **Business Name & Branding**  
+   - **Business Name**: **The Nosh Co.**  
+   - **Color Scheme**: **Black & White** (logo)  
+   - **Primary App Color**: Use **#22c55e (green)** for accents (buttons, specials badge, admin FAB) — it works well with black/white branding and feels fresh for a fruit & nut shop.  
+   - **Typography**: Clean, modern sans-serif (use Tailwind’s default `font-sans`)
+
+2. **Unit 1 Scope**  
+   - YES → **Include the floating "Admin" button** (bottom-right, green, fixed)  
+   - YES → **Include mock product data** (3 items, 1 marked as special)  
+   - YES → **Full responsive product display** with:
+     - Product name
+     - Price in **ZAR** (e.g., `R220.00`)
+     - Unit (e.g., `/kg`)
+     - **Orange "SPECIAL" badge** if `isSpecial: true`
+     - Placeholder image if no `imageUrl`
+   - Keep it **simple, mobile-first, PWA-ready**
+
+3. **South African Context**  
+   - **Currency**: Display all prices in **South African Rand (ZAR)** with format: `R220.00`  
+   - **No payment or delivery yet** — that’s Unit 4/5  
+   - **Keep language neutral** (English is fine)
+
+---
+
+### UNIT 1 FINAL SCOPE (Confirmed)
+
+| Feature | Included? |
+|-------|----------|
+| PWA setup (manifest, service worker, installable) | Yes |
+| Product model (`Product` interface) | Yes |
+| Product service (loads `products.json`) | Yes |
+| Home page with responsive product grid | Yes |
+| Price in **ZAR** (`R${price}`) | Yes |
+| **SPECIAL** badge (orange) | Yes |
+| Floating **Admin** button (green, fixed) | Yes |
+| Mock data (3 products, 1 special) | Yes |
+| Tailwind CSS + mobile-first design | Yes |
+
+---
+
+Please generate **the complete Unit 1 project** with:
+- Full file structure
+- All code (`.ts`, `.html`, `.scss`, `manifest.json`, etc.)
+- Ready to run in Replit (`npm run dev`)
+- Preview works in Replit webview
+
+Once generated, I’ll review, run it, and say: **“Unit 1 is live!”** — then we move to **Unit 2: Admin Login + Toggle Specials**.
+
+Let’s build this together — **one perfect unit at a time**.

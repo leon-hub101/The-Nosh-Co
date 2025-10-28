@@ -1,0 +1,27 @@
+I'm evaluating tech stacks for building a mobile-first e-commerce app (PWA or hybrid native) for a fruit and nut business in South Africa. The app needs: a product catalog with specials, admin panel for posting updates, checkout with local payments (e.g., PayFast), and delivery integration (e.g., Pudo). It must be web-responsive and installable on mobile (Android/iOS) via PWA or native builds.
+
+I'm familiar with C#/.NET and want to leverage that. Based on your earlier feedback that Replit doesn't fully support Ionic CLI for mobile, please analyze and compare these two routes for feasibility in Replit:
+
+**Route 1: Angular 18 Standalone + PWA (Web-First)**
+- Use Vite for setup, Tailwind for styling.
+- Standalone components, HttpClient for mock data.
+- Add PWA manifest and service worker for offline/installable mobile support.
+- No native builds, just web that feels mobile-native.
+
+**Route 2: .NET Blazor Hybrid (C# Route)**
+- Use Blazor WebAssembly or Server for the UI (Razor components, C# everywhere).
+- For mobile: Integrate with .NET MAUI for hybrid native builds (Android/iOS wrappers).
+- Leverage my C# skills for models, services, and logic.
+- Include Entity Framework for data (start with in-memory DB, later SQLite).
+- Ensure it runs in Replit: Can you scaffold a full Blazor app? Handle MAUI builds? Any limitations on Android/iOS emulation or deployment?
+
+For each route:
+1. **Replit Compatibility**: What works natively (e.g., preview, run, deploy)? What requires workarounds (e.g., local export for builds)?
+2. **Mobile Readiness**: How to achieve PWA/native output? Offline support? Camera/push features?
+3. **Pros/Cons for My Skills**: Ease for C# user vs. learning JS/TS.
+4. **MVP Scope**: Can you generate a starter project with home page (product list + special badge) and admin button? Output full files/code.
+5. **Limitations in 2025**: Any compute/storage caps, AI generation issues, or mobile testing hurdles?
+
+Recommend the **best route for Replit** based on speed, my C# background, and mobile goals. If .NET/Blazor is viable, generate a sample Unit 1 (Blazor home page with mock products.json). If not, refine the Angular PWA prompt.
+
+Output: Clear comparison table + recommendation + sample code if applicable.
