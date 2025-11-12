@@ -19,6 +19,8 @@ export const products = pgTable("products", {
   price1kg: numeric("price_1kg", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"),
   isSpecial: boolean("is_special").notNull().default(false),
+  stock500g: integer("stock_500g").notNull().default(100),
+  stock1kg: integer("stock_1kg").notNull().default(100),
 });
 
 export const orders = pgTable("orders", {
