@@ -1,5 +1,8 @@
-import { Flower2 } from "lucide-react";
+import { Flower2, Settings } from "lucide-react";
 import { format } from "date-fns";
+import { useState } from "react";
+import AdminLoginModal from "./AdminLoginModal";
+import { Button } from "@/components/ui/button";
 
 interface ShopClosedOverlayProps {
   closedMessage?: string | null;
@@ -7,6 +10,7 @@ interface ShopClosedOverlayProps {
 }
 
 export function ShopClosedOverlay({ closedMessage, reopenDate }: ShopClosedOverlayProps) {
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const formattedReopenDate = reopenDate 
     ? format(new Date(reopenDate), "EEEE, MMMM do, yyyy 'at' h:mm a")
     : null;
@@ -77,7 +81,28 @@ export function ShopClosedOverlay({ closedMessage, reopenDate }: ShopClosedOverl
           <Flower2 className="w-6 h-6 text-[#8B9F8D]" />
           <div className="h-px flex-1 bg-gradient-to-l from-transparent via-black/20 to-black/20" />
         </div>
+
+        {/* Admin access button - discreet but accessible */}
+        <div className="mt-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAdminLogin(true)}
+            className="text-black/30 hover:text-black/60"
+            data-testid="button-admin-overlay"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Admin Access
+          </Button>
+        </div>
       </div>
+
+      {/* Admin login modal */}
+      <AdminLoginModal 
+        isOpen={showAdminLogin}
+        onClose={() => setShowAdminLogin(false)}
+        onLoginSuccess={() => setShowAdminLogin(false)}
+      />
     </div>
   );
 }
