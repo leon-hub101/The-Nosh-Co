@@ -198,10 +198,25 @@ Preferred communication style: Simple, everyday language.
 - **express-session**: Session management
 - **connect-pg-simple**: PostgreSQL session store
 
+### Product Images (Module 2 - Completed)
+
+**Stock Photo Integration**:
+- 58 high-quality stock photos sourced for all products
+- Images stored in `attached_assets/stock_images/` directory
+- Hardened static file serving via Express middleware
+- Security features: path.resolve, fallthrough: false, index: false, extensions: false
+- All database records updated with image_url references
+
+**Image Categories**:
+- Nuts: Premium almonds, cashews, macadamias, pecans, pistachios, walnuts, brazil nuts
+- Dried Fruits: Apricots, dates, figs, cranberries, mango, prunes, raisins, cherries
+- Sweet Snacks: Caramel nuts, gummies, jelly products, popcorn, wine gums
+- Baking/Health: Seeds (chia, pumpkin, sunflower, sesame), flours, oats, quinoa, cocoa
+
 ### Current Integration Status
 - **Database**: PostgreSQL active with 58 products seeded
-- **Product Data**: Database-backed with null imageUrl (images pending Module 2)
+- **Product Images**: All 58 products have stock photos (Module 2 complete)
 - **Session Management**: Active with PostgreSQL persistence
 - **API Routes**: Full CRUD for users, products, orders, auth, PayFast payments
-- **Security**: Module 1 complete (logging, validation, rate limiting, secure sessions)
+- **Security**: Module 1 complete (logging, validation, rate limiting, secure sessions, hardened static assets)
 - **Frontend-Backend Sync**: Pending Module 3 (frontend still uses localStorage)

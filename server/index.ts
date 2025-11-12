@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupSecurityMiddleware } from "./middleware/security";
@@ -84,6 +85,14 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// Serve stock images as static assets with security options
+const stockImagesPath = path.resolve(process.cwd(), 'attached_assets', 'stock_images');
+app.use('/stock_images', express.static(stockImagesPath, {
+  fallthrough: false,  // Return 404 instead of passing to next handler
+  index: false,        // Disable directory listing
+  extensions: false,   // Disable extension searching
+}));
 
 (async () => {
   const server = await registerRoutes(app);
