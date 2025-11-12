@@ -17,6 +17,7 @@ export interface IStorage {
   getProductsByCategory(category: string): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProductSpecial(id: number, isSpecial: boolean): Promise<void>;
+  updateProductStock(id: number, stock500g: number, stock1kg: number): Promise<void>;
   
   // Orders
   createOrder(order: InsertOrder): Promise<Order>;
@@ -84,6 +85,8 @@ export class MemStorage implements IStorage {
       ...product,
       imageUrl: product.imageUrl || null,
       isSpecial: product.isSpecial || false,
+      stock500g: product.stock500g || 100,
+      stock1kg: product.stock1kg || 100,
     };
     this.products.set(product.id, newProduct);
     return newProduct;
@@ -93,6 +96,14 @@ export class MemStorage implements IStorage {
     const product = this.products.get(id);
     if (product) {
       product.isSpecial = isSpecial;
+    }
+  }
+
+  async updateProductStock(id: number, stock500g: number, stock1kg: number): Promise<void> {
+    const product = this.products.get(id);
+    if (product) {
+      product.stock500g = stock500g;
+      product.stock1kg = stock1kg;
     }
   }
 

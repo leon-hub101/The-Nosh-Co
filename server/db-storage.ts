@@ -52,6 +52,12 @@ export class DbStorage implements IStorage {
       .where(eq(products.id, id));
   }
 
+  async updateProductStock(id: number, stock500g: number, stock1kg: number): Promise<void> {
+    await db.update(products)
+      .set({ stock500g, stock1kg })
+      .where(eq(products.id, id));
+  }
+
   // Orders
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
     const result = await db.insert(orders).values(insertOrder as any).returning();
