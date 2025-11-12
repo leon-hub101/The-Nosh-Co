@@ -50,12 +50,18 @@ Preferred communication style: Simple, everyday language.
 - Production: Pre-built static assets served from dist/public
 
 **Storage Layer**: 
-- In-memory storage implementation (MemStorage class) for development
-- Interface-based design (IStorage) allows easy swap to database persistence
-- Currently supports user CRUD operations
-- Product data currently mocked in frontend (planned for API migration)
+- PostgreSQL database with Drizzle ORM (active)
+- DbStorage implementation for production use
+- Interface-based design (IStorage) with MemStorage fallback
+- Supports users, products, and orders CRUD operations
+- All data persisted to database with proper validation
 
-**Session Management**: Prepared infrastructure for connect-pg-simple session store (not yet active)
+**Session Management**: 
+- connect-pg-simple PostgreSQL session store (active)
+- Secure session cookies with httpOnly, sameSite: "lax"
+- 7-day session expiry
+- Session secret from environment variable
+- Supports user authentication and role-based access
 
 ### Data Schema
 
@@ -74,14 +80,52 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication & Authorization
 
-**Admin Authentication**: 
-- Simple credential check (hardcoded in AdminLoginModal component)
-- Credentials: admin@thenoshco.co.za / Nosh2025!
-- Context-based auth state (AdminContext)
-- No session persistence (resets on page refresh)
-- No backend validation (frontend-only check)
+**Backend Authentication**: 
+- bcrypt password hashing (10 salt rounds)
+- Express session-based authentication
+- PostgreSQL session persistence
+- Password change endpoint with current password validation
+- Registration always creates "customer" role (admin role cannot be self-assigned)
 
-**Authorization Model**: Binary admin/non-admin with admin-only features (toggle specials, logout button)
+**Authorization Model**: 
+- Role-based access control (admin/customer)
+- Middleware: requireAuth (any authenticated user), requireAdmin (admin only)
+- Admin features: view all orders, update order status, toggle product specials
+- Customer features: create orders, view own order details
+
+### Security Implementation (Module 1 - Completed)
+
+**Logging & Monitoring**:
+- Winston logger with rotating file transports
+- Daily log rotation with 14-day retention
+- Separate log files: auth.log, payment.log, error.log, combined.log
+- Structured JSON logging with contextual metadata
+- Request-level logging for all API calls
+- Error tracking with unique error IDs
+
+**Security Middleware**:
+- Helmet security headers (CSP, XSS protection, frame guards)
+- CORS with origin whitelist (thenosh.co, localhost, *.repl.co, *.replit.dev)
+- Rate limiting:
+  - Auth endpoints: 100 requests/15min per IP
+  - PayFast ITN: 10 requests/minute
+- Secure session cookies (httpOnly, sameSite, secure in production)
+
+**Input Validation**:
+- Zod validation on all POST/PATCH endpoints
+- Auth: email format, password length, current password verification
+- Products: boolean validation for special status
+- Orders: item structure, quantity limits (max 100), PUDO location schema
+- Order status: enum validation (pending, paid, processing, shipped, delivered, cancelled)
+- PayFast: UUID order ID validation
+- FCM: token, title, body required fields
+
+**Payment Security**:
+- PayFast signature verification (HMAC)
+- Merchant ID validation
+- Server-to-server payment validation
+- Amount verification against database (prevents client manipulation)
+- Transaction ID tracking
 
 ### Design System
 
@@ -143,8 +187,21 @@ Preferred communication style: Simple, everyday language.
 - **clsx + tailwind-merge**: Conditional className utilities
 - **class-variance-authority**: Component variant management
 
+### Backend Security & Dependencies
+- **helmet**: HTTP security headers
+- **cors**: Cross-origin resource sharing with origin whitelist
+- **express-rate-limit**: API rate limiting and DDoS protection
+- **winston**: Production-grade logging with rotation
+- **winston-daily-rotate-file**: Daily log rotation with retention policies
+- **zod**: Runtime schema validation
+- **bcrypt**: Password hashing
+- **express-session**: Session management
+- **connect-pg-simple**: PostgreSQL session store
+
 ### Current Integration Status
-- **Database**: Drizzle + PostgreSQL configured but not connected (requires DATABASE_URL environment variable)
-- **Product Data**: Mocked in frontend, images stored in attached_assets directory
-- **Session Management**: Infrastructure present but not actively used
-- **API Routes**: Minimal backend implementation (no product/auth endpoints yet)
+- **Database**: PostgreSQL active with 58 products seeded
+- **Product Data**: Database-backed with null imageUrl (images pending Module 2)
+- **Session Management**: Active with PostgreSQL persistence
+- **API Routes**: Full CRUD for users, products, orders, auth, PayFast payments
+- **Security**: Module 1 complete (logging, validation, rate limiting, secure sessions)
+- **Frontend-Backend Sync**: Pending Module 3 (frontend still uses localStorage)
