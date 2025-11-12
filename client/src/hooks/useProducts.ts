@@ -9,6 +9,8 @@ interface ProductFromAPI {
   price1kg: string;
   imageUrl: string | null;
   isSpecial: boolean;
+  stock500g: number;
+  stock1kg: number;
 }
 
 // Frontend product type (camelCase for UI compatibility)
@@ -17,8 +19,10 @@ export interface Product {
   name: string;
   size: string;
   price: number;
+  stock: number;
   size2: string;
   price2: number;
+  stock2: number;
   category: string;
   imageUrl: string | null;
   isSpecial: boolean;
@@ -77,8 +81,10 @@ function transformProduct(apiProduct: ProductFromAPI): Product {
     name: apiProduct.name,
     size: "500g",
     price: parseFloat(apiProduct.price500g),
+    stock: apiProduct.stock500g,
     size2: "1kg",
     price2: parseFloat(apiProduct.price1kg),
+    stock2: apiProduct.stock1kg,
     category: getCategoryForProduct(apiProduct.id),
     imageUrl: apiProduct.imageUrl,
     isSpecial: apiProduct.isSpecial,
