@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -11,24 +12,39 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }: Adm
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
-    // Hardcoded credentials (TEMPORARY - replace with proper backend authentication before production)
-    const ADMIN_EMAIL = "admin@thenoshco.co.za";
-    const ADMIN_PASSWORD = "Nosh2025!";
+    try {
+      // Call backend login endpoint
+      const response = await apiRequest('POST', '/api/auth/login', {
+        email,
+        password,
+      });
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      onLoginSuccess();
-      onClose();
-      setEmail("");
-      setPassword("");
-    } else {
-      setError("Invalid credentials");
+      // Parse JSON response
+      const data = await response.json();
+
+      // Check if response indicates admin role
+      if (data.role === 'admin') {
+        onLoginSuccess();
+        onClose();
+        setEmail("");
+        setPassword("");
+      } else {
+        setError("Admin access required");
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || "Invalid credentials");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -83,6 +99,7 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }: Adm
               className="w-full px-4 py-3 border border-card-border bg-white text-foreground focus:outline-none focus:border-foreground transition-colors"
               placeholder="admin@thenoshco.co.za"
               required
+              disabled={isLoading}
               data-testid="input-admin-email"
             />
           </div>
@@ -102,16 +119,18 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }: Adm
               className="w-full px-4 py-3 border border-card-border bg-white text-foreground focus:outline-none focus:border-foreground transition-colors"
               placeholder="Enter password"
               required
+              disabled={isLoading}
               data-testid="input-admin-password"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-black text-white py-3 px-8 text-sm font-sans tracking-widest uppercase hover:bg-gray-900 transition-colors"
+            className="w-full bg-black text-white py-3 px-8 text-sm font-sans tracking-widest uppercase hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
             data-testid="button-admin-login-submit"
           >
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>

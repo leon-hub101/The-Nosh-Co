@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BasketProvider } from "@/contexts/BasketContext";
-import { AdminProvider } from "@/contexts/AdminContext";
+import { AdminProvider, useAdmin } from "@/contexts/AdminContext";
 import { SpecialsProvider } from "@/contexts/SpecialsContext";
 import { OrderProvider } from "@/contexts/OrderContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -41,10 +41,18 @@ function Router() {
 }
 
 function AppContent() {
-  const { data: shopStatus, isLoading } = useShopStatus();
+  const { data: shopStatus, isLoading: shopStatusLoading } = useShopStatus();
+  const { isAdminLoggedIn, isLoading: adminLoading } = useAdmin();
 
-  // Show overlay if shop is closed (but not while loading)
-  if (!isLoading && shopStatus && !shopStatus.isOpen) {
+  // Show overlay if shop is closed AND user is not an admin (but not while loading)
+  const shouldShowOverlay = 
+    !shopStatusLoading && 
+    !adminLoading && 
+    shopStatus && 
+    !shopStatus.isOpen && 
+    !isAdminLoggedIn;
+
+  if (shouldShowOverlay) {
     return (
       <ShopClosedOverlay 
         closedMessage={shopStatus.closedMessage}
