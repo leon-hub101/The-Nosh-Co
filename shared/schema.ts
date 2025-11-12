@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, numeric, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, numeric, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -38,6 +38,14 @@ export const orders = pgTable("orders", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const shopStatus = pgTable("shop_status", {
+  id: serial("id").primaryKey(),
+  isOpen: boolean("is_open").notNull().default(true),
+  closedMessage: text("closed_message"),
+  reopenDate: timestamp("reopen_date", { withTimezone: true }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -53,6 +61,11 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   paymentVerified: true,
 });
 
+export const insertShopStatusSchema = createInsertSchema(shopStatus).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -61,3 +74,6 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
+
+export type ShopStatus = typeof shopStatus.$inferSelect;
+export type InsertShopStatus = z.infer<typeof insertShopStatusSchema>;

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { users, products, orders } from "@shared/schema";
-import type { User, InsertUser, Product, InsertProduct, Order, InsertOrder } from "@shared/schema";
+import { users, products, orders, shopStatus } from "@shared/schema";
+import type { User, InsertUser, Product, InsertProduct, Order, InsertOrder, ShopStatus } from "@shared/schema";
 import type { IStorage } from "./storage";
 
 export class DbStorage implements IStorage {
@@ -149,5 +149,36 @@ export class DbStorage implements IStorage {
     await db.update(orders)
       .set(updateData)
       .where(eq(orders.id, id));
+  }
+
+  // Shop Status
+  async getShopStatus(): Promise<ShopStatus> {
+    // Always fetch the first (and only) row
+    const result = await db.select().from(shopStatus).limit(1);
+    if (!result[0]) {
+      // If no record exists, create default open status
+      const created = await db.insert(shopStatus).values({
+        isOpen: true,
+        closedMessage: null,
+        reopenDate: null,
+      }).returning();
+      return created[0];
+    }
+    return result[0];
+  }
+
+  async updateShopStatus(isOpen: boolean, closedMessage?: string | null, reopenDate?: Date | null): Promise<ShopStatus> {
+    // Update the first row (singleton pattern)
+    const result = await db.update(shopStatus)
+      .set({
+        isOpen,
+        closedMessage: closedMessage ?? null,
+        reopenDate: reopenDate ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(shopStatus.id, 1))
+      .returning();
+    
+    return result[0];
   }
 }

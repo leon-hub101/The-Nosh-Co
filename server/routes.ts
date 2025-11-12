@@ -72,6 +72,13 @@ const createPaymentSchema = z.object({
   orderId: z.string().uuid(),
 });
 
+// Shop Status validation schemas
+const updateShopStatusSchema = z.object({
+  isOpen: z.boolean(),
+  closedMessage: z.string().optional().nullable(),
+  reopenDate: z.string().datetime().optional().nullable(),
+});
+
 const fcmNotificationSchema = z.object({
   token: z.string().min(1, "FCM token is required"),
   title: z.string().min(1, "Title is required"),
@@ -640,6 +647,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       logger.error("PayFast ITN Error", { error });
       res.status(500).send("Error processing notification");
+    }
+  });
+
+  // ===== SHOP STATUS ROUTES =====
+  
+  // Get shop status (public endpoint)
+  app.get("/api/shop/status", async (req: Request, res: Response) => {
+    try {
+      const status = await dbStorage.getShopStatus();
+      
+      // Auto-reopen if reopen date has passed
+      if (!status.isOpen && status.reopenDate && new Date() >= new Date(status.reopenDate)) {
+        const updatedStatus = await dbStorage.updateShopStatus(true, null, null);
+        logger.info("Shop auto-reopened", { reopenDate: status.reopenDate });
+        return res.json(updatedStatus);
+      }
+      
+      res.json(status);
+    } catch (error) {
+      logger.error("Error fetching shop status", { error });
+      res.status(500).json({ error: "Failed to fetch shop status" });
+    }
+  });
+
+  // Update shop status (admin only)
+  app.patch("/api/shop/toggle", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const validation = updateShopStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
+      }
+
+      const { isOpen, closedMessage, reopenDate } = validation.data;
+      
+      const updatedStatus = await dbStorage.updateShopStatus(
+        isOpen,
+        closedMessage,
+        reopenDate ? new Date(reopenDate) : null
+      );
+
+      logger.info("Shop status updated", { 
+        isOpen, 
+        closedMessage, 
+        reopenDate,
+        updatedBy: (req.user as any)?.email 
+      });
+
+      res.json(updatedStatus);
+    } catch (error) {
+      logger.error("Error updating shop status", { error });
+      res.status(500).json({ error: "Failed to update shop status" });
     }
   });
 

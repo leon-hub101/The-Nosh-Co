@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Product, type InsertProduct, type Order, type InsertOrder } from "@shared/schema";
+import { type User, type InsertUser, type Product, type InsertProduct, type Order, type InsertOrder, type ShopStatus, type InsertShopStatus } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -25,17 +25,30 @@ export interface IStorage {
   getOrder(id: string): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
   updateOrderStatus(id: string, status: string, paymentVerified?: boolean, payfastTransactionId?: string): Promise<void>;
+  
+  // Shop Status
+  getShopStatus(): Promise<ShopStatus>;
+  updateShopStatus(isOpen: boolean, closedMessage?: string | null, reopenDate?: Date | null): Promise<ShopStatus>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private products: Map<number, Product>;
   private orders: Map<string, Order>;
+  private shopStatusRecord: ShopStatus;
 
   constructor() {
     this.users = new Map();
     this.products = new Map();
     this.orders = new Map();
+    // Initialize shop status (shop is open by default)
+    this.shopStatusRecord = {
+      id: 1,
+      isOpen: true,
+      closedMessage: null,
+      reopenDate: null,
+      updatedAt: new Date(),
+    };
   }
 
   // Users
@@ -189,6 +202,22 @@ export class MemStorage implements IStorage {
         order.payfastTransactionId = payfastTransactionId;
       }
     }
+  }
+
+  // Shop Status
+  async getShopStatus(): Promise<ShopStatus> {
+    return this.shopStatusRecord;
+  }
+
+  async updateShopStatus(isOpen: boolean, closedMessage?: string | null, reopenDate?: Date | null): Promise<ShopStatus> {
+    this.shopStatusRecord = {
+      ...this.shopStatusRecord,
+      isOpen,
+      closedMessage: closedMessage ?? null,
+      reopenDate: reopenDate ?? null,
+      updatedAt: new Date(),
+    };
+    return this.shopStatusRecord;
   }
 }
 
