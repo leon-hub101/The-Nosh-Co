@@ -1,14 +1,49 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupSecurityMiddleware } from "./middleware/security";
+import { logger } from "./utils/logger";
+import { db } from "./db";
 
 const app = express();
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 declare module 'http' {
   interface IncomingMessage {
     rawBody: Buffer | string
   }
 }
+
+// Security middleware (helmet, CORS, rate limiting)
+setupSecurityMiddleware(app);
+
+// Session configuration with PostgreSQL store
+const PgSession = connectPgSimple(session);
+
+app.use(
+  session({
+    store: new PgSession({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+        ssl: isDevelopment ? false : { rejectUnauthorized: false },
+      },
+      tableName: "session",
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET || "nosh-co-secret-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    name: "nosh.sid", // Custom session cookie name
+    cookie: {
+      secure: !isDevelopment, // HTTPS only in production
+      httpOnly: true, // Prevent client-side JavaScript access
+      sameSite: "strict", // CSRF protection
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    },
+  })
+);
 
 // Capture raw body for PayFast ITN verification
 app.use(express.json({
@@ -23,30 +58,27 @@ app.use(express.urlencoded({
   }
 }));
 
+// Request logging middleware (structured logging with Winston)
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+    const logData = {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    };
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    if (res.statusCode >= 500) {
+      logger.error("Request error", logData);
+    } else if (res.statusCode >= 400) {
+      logger.warn("Request warning", logData);
+    } else if (req.path.startsWith("/api")) {
+      logger.info("API request", logData);
     }
   });
 
@@ -56,12 +88,35 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  // Global error handler
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    res.status(status).json({ message });
-    throw err;
+    // Log error details
+    logger.error("Request error", {
+      errorId,
+      status,
+      message: err.message,
+      stack: err.stack,
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+    });
+
+    // Hide stack traces in production
+    if (isDevelopment) {
+      res.status(status).json({
+        error: err.message || "Internal Server Error",
+        errorId,
+        stack: err.stack,
+      });
+    } else {
+      res.status(status).json({
+        error: status >= 500 ? "Internal Server Error" : err.message,
+        errorId, // Send error ID for support reference
+      });
+    }
   });
 
   // importantly only setup vite in development and after
@@ -83,6 +138,11 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
+    logger.info(`🚀 The Nosh Co. server started`, {
+      port,
+      environment: isDevelopment ? "development" : "production",
+      nodeVersion: process.version,
+    });
     log(`serving on port ${port}`);
   });
 })();
