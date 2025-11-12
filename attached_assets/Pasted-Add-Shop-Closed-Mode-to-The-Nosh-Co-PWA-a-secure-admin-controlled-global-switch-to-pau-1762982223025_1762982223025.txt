@@ -1,0 +1,117 @@
+Add **Shop Closed Mode** to **The Nosh Co.** PWA — a secure, admin-controlled global switch to **pause all sales** with a **custom message and reopen date**.
+
+### Current State:
+- Full e-commerce flow: browse → basket → checkout → PayFast
+- Admin dashboard, backend, frontend connected
+- No global pause functionality
+
+### NEW REQUIREMENTS:
+
+---
+
+#### 1. **Database: Shop Status Table**
+```sql
+CREATE TABLE shop_status (
+  id SERIAL PRIMARY KEY,
+  is_open BOOLEAN DEFAULT TRUE,
+  closed_message TEXT,
+  reopen_date TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+Seed with: is_open = TRUE, closed_message = NULL
+
+
+2. Backend: Admin API
+ts// GET /api/shop/status → public
+// PATCH /api/shop/toggle → admin only
+
+Toggle is_open
+Set closed_message (e.g., "We’re on holiday! Back on Jan 6.")
+Set reopen_date (optional)
+
+
+3. Frontend: Global Shop Gate
+
+On app load → fetch /api/shop/status
+If is_open = FALSE → block all commerce:
+Hide: product grid, add-to-basket, checkout
+Show full-screen luxury overlay:textTHE NOSH CO.
+┌────────────────────────────────────┐
+│                                    │
+│     We’re taking a short break     │
+│                                    │
+│  [closed_message]                  │
+│                                    │
+│  Reopening on:                     │
+│  [reopen_date formatted]           │
+│                                    │
+│  Contact: 076 474 3644             │
+│                                    │
+└────────────────────────────────────┘
+Design: Jo Malone style — cream background, serif font, botanical border
+
+
+
+4. Admin Panel: Shop Control
+
+Add to /admin dashboard:textSHOP STATUS
+[OPEN]  ← toggle button
+Closed Message: [____________________]
+Reopen Date:    [____/__/__ __:__]
+[Save]
+
+
+5. Security & UX
+
+Block checkout even if URL is forced
+Disable basket (clear on close)
+Hide PayFast/Apple Pay
+Allow browsing (window shopping)
+Auto-reopen on reopen_date (cron or frontend check)
+
+
+6. Auto-Reopen (Optional)
+
+On app load, if reopen_date < now() → auto-set is_open = TRUE
+
+
+7. Replit
+
+Works in preview
+npm run dev
+Full end-to-end test:
+Admin closes shop → customer sees message
+Admin reopens → normal flow
+
+
+OUTPUT:
+
+Full updated project
+New shop_status table + seed
+server/routes/shop.ts
+client/src/components/ShopClosedOverlay.tsx
+Updated App.tsx, AdminDashboard.tsx, Checkout.tsx
+Shop can be closed in 1 click — zero sales until reopened
+
+Generate the complete updated app.
+text---
+
+## WHAT YOU GET AFTER THIS
+
+| Action | Result |
+|------|--------|
+| You toggle **"Close Shop"** | All sales **instantly stop** |
+| Customer opens app | Sees **elegant closed message** |
+| You set reopen date | Countdown or message shown |
+| Reopen date passes | Shop **auto-reopens** |
+
+---
+
+## USE CASE: HOLIDAY BREAK
+Admin → Close Shop
+Message: "Season’s Greetings! We’re closed for the holidays."
+Reopen: Jan 6, 2026, 9:00 AM
+→ Customers see luxury pause screen
+→ You rest
+→ Jan 6: Shop auto-reopens
