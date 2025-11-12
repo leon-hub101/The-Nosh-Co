@@ -1,52 +1,21 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Share2, Send, LogOut, Package, Grid3x3 } from "lucide-react";
-import { type Product } from "@shared/schema";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
+import { useProducts } from "@/hooks/useProducts";
 import { usePush } from "@/hooks/usePush";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import cashewsImg from "@assets/generated_images/Premium_cashew_nuts_product_photo_c8b18a7a.png";
-import strawberriesImg from "@assets/generated_images/Fresh_organic_strawberries_product_photo_dd4d1d44.png";
-import almondsImg from "@assets/generated_images/Roasted_almonds_product_photo_28680ce6.png";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { logout } = useAdmin();
-  const { isSpecial, toggleSpecial } = useSpecials();
+  const { isSpecial, toggleSpecial, isTogglingSpecial } = useSpecials();
+  const { products, isLoading } = useProducts();
   const { hasPermission, requestPermission, sendTestPush } = usePush();
   const { toast } = useToast();
-
-  // TODO: Replace with API call
-  const [products] = useState<Product[]>([
-    {
-      id: 1,
-      name: "Premium Cashews",
-      price500g: "110.00",
-      price1kg: "220.00",
-      imageUrl: cashewsImg,
-      isSpecial: true,
-    },
-    {
-      id: 2,
-      name: "Fresh Strawberries",
-      price500g: "42.50",
-      price1kg: "85.00",
-      imageUrl: strawberriesImg,
-      isSpecial: false,
-    },
-    {
-      id: 3,
-      name: "Roasted Almonds",
-      price500g: "90.00",
-      price1kg: "180.00",
-      imageUrl: almondsImg,
-      isSpecial: false,
-    },
-  ]);
 
   const handleLogout = () => {
     logout();
@@ -66,7 +35,7 @@ export default function AdminDashboard() {
     }
 
     const productList = specialProducts
-      .map(p => `${p.name} - R${p.price1kg}/kg`)
+      .map(p => `${p.name} - R${p.price2.toFixed(2)}/kg`)
       .join('\n');
 
     const replitUrl = window.location.origin;
@@ -168,55 +137,73 @@ export default function AdminDashboard() {
             Manage Specials
           </h2>
 
-          <div className="space-y-4">
-            {products.map((product) => {
-              const productIsSpecial = isSpecial(product.id);
-              
-              return (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-6 border border-card-border hover:bg-stone-50 transition-colors"
-                  data-testid={`admin-product-${product.id}`}
-                >
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-6 border border-card-border">
                   <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-stone-50 flex items-center justify-center overflow-hidden">
-                      {product.imageUrl && (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-serif text-foreground mb-1" data-testid={`text-product-name-${product.id}`}>
-                        {product.name}
-                      </h3>
-                      <p className="text-sm font-sans text-gray-500">
-                        500g: R{product.price500g} • 1kg: R{product.price1kg}
-                      </p>
+                    <div className="w-20 h-20 bg-stone-200 animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-5 w-32 bg-stone-200 animate-pulse" />
+                      <div className="h-4 w-24 bg-stone-200 animate-pulse" />
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <Label 
-                      htmlFor={`admin-special-${product.id}`}
-                      className="text-sm font-sans tracking-wide uppercase text-gray-700 cursor-pointer"
-                    >
-                      Special
-                    </Label>
-                    <Switch
-                      id={`admin-special-${product.id}`}
-                      checked={productIsSpecial}
-                      onCheckedChange={() => toggleSpecial(product.id)}
-                      data-testid={`admin-toggle-special-${product.id}`}
-                      className="data-[state=checked]:bg-orange-500"
-                    />
-                  </div>
+                  <div className="w-12 h-6 bg-stone-200 animate-pulse" />
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {products.map((product) => {
+                const productIsSpecial = isSpecial(product.id);
+                
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between p-6 border border-card-border hover:bg-stone-50 transition-colors"
+                    data-testid={`admin-product-${product.id}`}
+                  >
+                    <div className="flex items-center gap-6">
+                      <div className="w-20 h-20 bg-stone-50 flex items-center justify-center overflow-hidden">
+                        {product.imageUrl && (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-serif text-foreground mb-1" data-testid={`text-product-name-${product.id}`}>
+                          {product.name}
+                        </h3>
+                        <p className="text-sm font-sans text-gray-500">
+                          500g: R{product.price.toFixed(2)} • 1kg: R{product.price2.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Label 
+                        htmlFor={`admin-special-${product.id}`}
+                        className="text-sm font-sans tracking-wide uppercase text-gray-700 cursor-pointer"
+                      >
+                        Special
+                      </Label>
+                      <Switch
+                        id={`admin-special-${product.id}`}
+                        checked={productIsSpecial}
+                        onCheckedChange={() => toggleSpecial(product.id, productIsSpecial)}
+                        disabled={isTogglingSpecial}
+                        data-testid={`admin-toggle-special-${product.id}`}
+                        className="data-[state=checked]:bg-orange-500"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
     </div>

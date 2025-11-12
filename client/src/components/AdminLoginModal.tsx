@@ -18,7 +18,7 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }: Adm
     e.preventDefault();
     setError("");
 
-    // Hardcoded credentials
+    // Hardcoded credentials (TEMPORARY - replace with proper backend authentication before production)
     const ADMIN_EMAIL = "admin@thenoshco.co.za";
     const ADMIN_PASSWORD = "Nosh2025!";
 

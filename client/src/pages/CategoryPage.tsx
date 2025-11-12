@@ -1,6 +1,6 @@
 import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, Home } from "lucide-react";
-import { getCategoryBySlug, getProductsByCategory, type ProductData } from "@/data/products";
+import { useProducts, type Product } from "@/hooks/useProducts";
 import Header from "@/components/Header";
 import BasketModal from "@/components/BasketModal";
 import { useState } from "react";
@@ -8,6 +8,7 @@ import { useBasket } from "@/contexts/BasketContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CategoryPage() {
   const [, params] = useRoute("/category/:slug");
@@ -15,9 +16,10 @@ export default function CategoryPage() {
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
   const { addItem: addToBasket } = useBasket();
   const { isSpecial } = useSpecials();
+  const { categories, productsByCategory, isLoading } = useProducts();
   
   const slug = params?.slug || "";
-  const category = getCategoryBySlug(slug);
+  const category = categories.find(c => c.slug === slug);
   
   if (!category) {
     return (
@@ -32,9 +34,9 @@ export default function CategoryPage() {
     );
   }
 
-  const categoryProducts = getProductsByCategory(category.name);
+  const categoryProducts = productsByCategory[category.name] || [];
 
-  const handleAddToBasket = (product: ProductData, size: "500g" | "1kg") => {
+  const handleAddToBasket = (product: Product, size: "500g" | "1kg") => {
     const price = size === "500g" ? product.price.toString() : product.price2.toString();
     addToBasket(product.id, product.name, size, price);
   };
@@ -86,7 +88,20 @@ export default function CategoryPage() {
         </div>
 
         {/* Products Grid */}
-        {categoryProducts.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white border border-card-border overflow-hidden">
+                <Skeleton className="aspect-square" />
+                <div className="p-6 space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : categoryProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[50vh]">
             <p className="text-gray-500 text-lg font-serif font-light">
               No products in this category yet
@@ -103,15 +118,23 @@ export default function CategoryPage() {
                   className="bg-white border border-card-border overflow-hidden hover-elevate transition-all"
                   data-testid={`product-card-${product.id}`}
                 >
-                  <div className="aspect-square bg-stone-50 flex items-center justify-center">
-                    <div className="text-center p-8">
-                      <div className="text-6xl font-serif font-light text-sage mb-2">
-                        {product.name[0]}
+                  <div className="aspect-square bg-stone-50 flex items-center justify-center overflow-hidden">
+                    {product.imageUrl ? (
+                      <img 
+                        src={product.imageUrl} 
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center p-8">
+                        <div className="text-6xl font-serif font-light text-sage mb-2">
+                          {product.name[0]}
+                        </div>
+                        <p className="text-xs font-sans tracking-wider uppercase text-gray-500">
+                          {category.name}
+                        </p>
                       </div>
-                      <p className="text-xs font-sans tracking-wider uppercase text-gray-500">
-                        {category.name}
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   <div className="p-6">

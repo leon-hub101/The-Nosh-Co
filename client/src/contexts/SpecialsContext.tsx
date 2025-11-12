@@ -1,51 +1,56 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useProducts } from '@/hooks/useProducts';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface SpecialsContextType {
-  specials: Set<number>;
-  toggleSpecial: (productId: number) => void;
   isSpecial: (productId: number) => boolean;
+  toggleSpecial: (productId: number, currentValue: boolean) => Promise<void>;
+  isTogglingSpecial: boolean;
 }
 
 const SpecialsContext = createContext<SpecialsContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'specials';
-
 export function SpecialsProvider({ children }: { children: ReactNode }) {
-  const [specials, setSpecials] = useState<Set<number>>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        return new Set(parsed);
-      } catch {
-        return new Set();
-      }
-    }
-    return new Set();
+  const { products } = useProducts();
+  const { toast } = useToast();
+
+  const toggleSpecialMutation = useMutation({
+    mutationFn: async ({ productId, currentValue }: { productId: number; currentValue: boolean }) => {
+      await apiRequest(
+        'PATCH',
+        `/api/products/${productId}/special`,
+        { isSpecial: !currentValue }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error updating special status",
+        description: error.message || "Failed to update product special status",
+        variant: "destructive",
+      });
+    },
   });
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(specials)));
-  }, [specials]);
-
-  const toggleSpecial = (productId: number) => {
-    setSpecials(current => {
-      const newSet = new Set(current);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
-      } else {
-        newSet.add(productId);
-      }
-      return newSet;
-    });
+  const isSpecial = (productId: number) => {
+    const product = products.find(p => p.id === productId);
+    return product?.isSpecial ?? false;
   };
 
-  const isSpecial = (productId: number) => {
-    return specials.has(productId);
+  const toggleSpecial = async (productId: number, currentValue: boolean) => {
+    await toggleSpecialMutation.mutateAsync({ productId, currentValue });
   };
 
   return (
-    <SpecialsContext.Provider value={{ specials, toggleSpecial, isSpecial }}>
+    <SpecialsContext.Provider value={{ 
+      isSpecial, 
+      toggleSpecial, 
+      isTogglingSpecial: toggleSpecialMutation.isPending 
+    }}>
       {children}
     </SpecialsContext.Provider>
   );

@@ -7,13 +7,14 @@ import CategoryCard from "@/components/CategoryCard";
 import AdminLoginModal from "@/components/AdminLoginModal";
 import BasketModal from "@/components/BasketModal";
 import { useAdmin } from "@/contexts/AdminContext";
-import { categories } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isBasketModalOpen, setIsBasketModalOpen] = useState(false);
   const { login, isAdminLoggedIn } = useAdmin();
+  const { categories } = useProducts();
 
   const handleAdminLoginSuccess = () => {
     login();
@@ -37,7 +38,7 @@ export default function Home() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-          {categories.map((category) => (
+          {categories && categories.length > 0 && categories.map((category) => (
             <CategoryCard key={category.slug} category={category} />
           ))}
         </div>

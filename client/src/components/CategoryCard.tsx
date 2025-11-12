@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Nut, Apple, Candy, Sprout, LucideIcon } from "lucide-react";
-import type { CategoryInfo } from "@/data/products";
+import type { CategoryInfo } from "@/hooks/useProducts";
 
 interface CategoryCardProps {
   category: CategoryInfo;

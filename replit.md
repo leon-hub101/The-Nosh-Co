@@ -25,8 +25,11 @@ Preferred communication style: Simple, everyday language.
 **State Management**:
 - React Context for cross-cutting concerns (authentication, basket, specials)
 - Local component state for UI interactions
-- LocalStorage persistence for special product flags
-- TanStack Query (React Query) for server state management (configured but not yet actively used)
+- TanStack Query (React Query) for server state management (active)
+  - useProducts hook fetches from /api/products with camelCase transformation
+  - SpecialsContext uses mutation-powered toggles with backend persistence
+  - Automatic cache invalidation on data mutations
+  - Loading states with skeleton components
 
 **Styling Approach**:
 - Tailwind CSS utility-first framework
@@ -65,7 +68,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Schema
 
-**Database**: PostgreSQL with Drizzle ORM configured but not actively used (data currently mocked)
+**Database**: PostgreSQL with Drizzle ORM (active - all products fetched from database)
 
 **Schema Design**:
 - `users` table: id (UUID), username (unique), password (hashed)
@@ -74,8 +77,10 @@ Preferred communication style: Simple, everyday language.
 - Zod schemas for runtime validation derived from Drizzle schema
 
 **Current Data Flow**: 
-- Products hardcoded in Home.tsx component with mock data
-- Specials state managed via SpecialsContext + localStorage
+- Products fetched from database via /api/products endpoint
+- useProducts hook transforms snake_case (price_500g, price_1kg) to camelCase (price, price2)
+- Specials state managed via backend mutations with TanStack Query cache invalidation
+- Category grouping derived from product ID ranges (1-7: nuts, 8-15: dried fruits, etc.)
 - Basket state ephemeral (lost on page refresh)
 
 ### Authentication & Authorization
@@ -213,10 +218,37 @@ Preferred communication style: Simple, everyday language.
 - Sweet Snacks: Caramel nuts, gummies, jelly products, popcorn, wine gums
 - Baking/Health: Seeds (chia, pumpkin, sunflower, sesame), flours, oats, quinoa, cocoa
 
+### Frontend API Sync (Module 3 - Completed)
+
+**TanStack Query Integration**:
+- Created `client/src/hooks/useProducts.ts` with data transformation layer
+- **CRITICAL FIX:** Updated ProductFromAPI interface to expect Drizzle ORM camelCase fields (price500g, price1kg) instead of snake_case
+- Fixed price display bug: parseFloat now correctly converts "125.00" strings to numbers (was showing "R NaN")
+- Category grouping preserved using product ID ranges
+- Loading states handled with Skeleton components
+
+**SpecialsContext Refactor**:
+- Now uses backend API with mutation-powered toggleSpecial
+- Signature: `toggleSpecial(productId, currentValue)` prevents race conditions during loading
+- Automatic cache invalidation via `queryClient.invalidateQueries`
+- Toast error handling for failed mutations
+- No longer depends on localStorage (backend is source of truth)
+
+**Component Updates**:
+- Home.tsx: Uses useProducts hook, removed hardcoded products
+- CategoryPage: Added loading skeletons, fetches from API, prices display correctly
+- AdminDashboard: Added loading guards, passes current value to toggleSpecial
+- All images now load from database URLs with fallback handling
+
+**Known Limitations (To Be Addressed):**
+- Admin authentication currently uses hardcoded client-side credentials (TEMPORARY)
+- AdminLoginModal.tsx has hardcoded email/password for development testing
+- **TODO for production:** Replace with proper backend authentication endpoint and session management before launch
+
 ### Current Integration Status
 - **Database**: PostgreSQL active with 58 products seeded
 - **Product Images**: All 58 products have stock photos (Module 2 complete)
 - **Session Management**: Active with PostgreSQL persistence
 - **API Routes**: Full CRUD for users, products, orders, auth, PayFast payments
 - **Security**: Module 1 complete (logging, validation, rate limiting, secure sessions, hardened static assets)
-- **Frontend-Backend Sync**: Pending Module 3 (frontend still uses localStorage)
+- **Frontend-Backend Sync**: Module 3 complete (TanStack Query active, no localStorage dependencies)
