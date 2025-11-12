@@ -9,6 +9,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   
   // Products
   getProducts(): Promise<Product[]>;
@@ -56,6 +57,13 @@ export class MemStorage implements IStorage {
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
+    const user = this.users.get(id);
+    if (user) {
+      user.password = hashedPassword;
+    }
   }
 
   // Products

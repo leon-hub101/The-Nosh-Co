@@ -5,10 +5,71 @@ import { DbStorage } from "./db-storage";
 import bcrypt from "bcrypt";
 import { generatePayFastSignature, verifyPayFastSignature, getPayFastConfig, validatePayFastPayment } from "./payfast";
 import { requireAuth, requireAdmin } from "./middleware";
+import { logger, logAuth, logPayment, logOrder } from "./utils/logger";
+import { z } from "zod";
 import "./types";
 
 // Use database storage in production
 const dbStorage = new DbStorage();
+
+// ===== VALIDATION SCHEMAS =====
+
+// Auth validation schemas
+const registerSchema = z.object({
+  email: z.string().email("Invalid email format").toLowerCase(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email format").toLowerCase(),
+  password: z.string().min(1, "Password is required"),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+// Product validation schemas
+const updateProductSpecialSchema = z.object({
+  isSpecial: z.boolean(),
+});
+
+// Order validation schemas
+const orderItemSchema = z.object({
+  id: z.number().int().positive(),
+  size: z.enum(["500g", "1kg"]),
+  quantity: z.number().int().positive().max(100),
+});
+
+const createOrderSchema = z.object({
+  items: z.array(orderItemSchema).min(1, "At least one item is required"),
+  pudoLocation: z.object({
+    name: z.string(),
+    address: z.string(),
+    code: z.string(),
+  }).optional().nullable(),
+  paymentMethod: z.string().optional().nullable(),
+  customerEmail: z.string().email().optional().nullable(),
+  customerPhone: z.string().optional().nullable(),
+});
+
+const updateOrderStatusSchema = z.object({
+  status: z.string().min(1, "Status is required"),
+  paymentVerified: z.boolean().optional(),
+  payfastTransactionId: z.string().optional(),
+});
+
+// PayFast validation schemas
+const createPaymentSchema = z.object({
+  orderId: z.string().uuid(),
+});
+
+const fcmNotificationSchema = z.object({
+  token: z.string().min(1, "FCM token is required"),
+  title: z.string().min(1, "Title is required"),
+  body: z.string().min(1, "Body is required"),
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ===== AUTHENTICATION ROUTES =====
@@ -16,25 +77,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user (always creates customer role)
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
+      // Validate request body
+      const validation = registerSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
       }
 
-      // Validate email format
-      if (!email.includes("@")) {
-        return res.status(400).json({ error: "Invalid email format" });
-      }
-
-      // Validate password strength
-      if (password.length < 8) {
-        return res.status(400).json({ error: "Password must be at least 8 characters" });
-      }
+      const { email, password } = validation.data;
 
       // Check if user already exists
       const existingUser = await dbStorage.getUserByEmail(email);
       if (existingUser) {
+        logAuth.register(email, req.ip);
         return res.status(400).json({ error: "User already exists" });
       }
 
@@ -53,13 +109,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userEmail = user.email;
       req.session.userRole = user.role;
 
+      logAuth.register(email, req.ip);
+
       res.json({
         id: user.id,
         email: user.email,
         role: user.role,
       });
     } catch (error) {
-      console.error("Register error:", error);
+      logger.error("Register error", { error, ip: req.ip });
       res.status(500).json({ error: "Failed to register user" });
     }
   });
@@ -67,28 +125,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Login
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
+      // Validate request body
+      const validation = loginSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
       }
+
+      const { email, password } = validation.data;
 
       // Find user
       const user = await dbStorage.getUserByEmail(email);
       if (!user) {
+        logAuth.login(email, false, req.ip);
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
       // Verify password
       const validPassword = await bcrypt.compare(password, user.password);
       if (!validPassword) {
+        logAuth.login(email, false, req.ip);
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      // Set session
+      // Set session and regenerate session ID
+      req.session.regenerate((err) => {
+        if (err) {
+          logger.error("Session regeneration error", { error: err, email });
+        }
+      });
+
       req.session.userId = user.id;
       req.session.userEmail = user.email;
       req.session.userRole = user.role;
+
+      logAuth.login(email, true, req.ip);
 
       res.json({
         id: user.id,
@@ -96,17 +168,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role,
       });
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error("Login error", { error, ip: req.ip });
       res.status(500).json({ error: "Failed to login" });
     }
   });
 
   // Logout
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    const userEmail = req.session.userEmail;
+    
     req.session.destroy((err: any) => {
       if (err) {
+        logger.error("Logout error", { error: err, email: userEmail });
         return res.status(500).json({ error: "Failed to logout" });
       }
+      
+      if (userEmail) {
+        logAuth.logout(userEmail, req.ip);
+      }
+      
       res.json({ success: true });
     });
   });
@@ -129,8 +209,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role,
       });
     } catch (error) {
-      console.error("Get user error:", error);
+      logger.error("Get user error", { error, userId: req.session.userId });
       res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  // Change password
+  app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Validate request body
+      const validation = changePasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
+      }
+
+      const { currentPassword, newPassword } = validation.data;
+      const userId = req.session.userId!;
+
+      // Get user
+      const user = await dbStorage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Verify current password
+      const validPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!validPassword) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await dbStorage.updateUserPassword(userId, hashedPassword);
+
+      // Regenerate session for security
+      req.session.regenerate((err) => {
+        if (err) {
+          logger.error("Session regeneration error after password change", { error: err, userId });
+        }
+      });
+
+      logAuth.passwordChange(user.email, req.ip);
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error("Change password error", { error, userId: req.session.userId });
+      res.status(500).json({ error: "Failed to change password" });
     }
   });
 
@@ -143,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const products = await dbStorage.getProducts();
       res.json(products);
     } catch (error) {
-      console.error("Error fetching products:", error);
+      logger.error("Error fetching products", { error });
       res.status(500).json({ error: "Failed to fetch products" });
     }
   });
@@ -155,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const products = await dbStorage.getProductsByCategory(category);
       res.json(products);
     } catch (error) {
-      console.error("Error fetching products by category:", error);
+      logger.error("Error fetching products by category", { error, category: req.params.category });
       res.status(500).json({ error: "Failed to fetch products" });
     }
   });
@@ -172,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(product);
     } catch (error) {
-      console.error("Error fetching product:", error);
+      logger.error("Error fetching product", { error, productId: req.params.id });
       res.status(500).json({ error: "Failed to fetch product" });
     }
   });
@@ -181,16 +309,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/:id/special", requireAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const { isSpecial } = req.body;
       
-      if (typeof isSpecial !== "boolean") {
-        return res.status(400).json({ error: "isSpecial must be a boolean" });
+      // Validate request body
+      const validation = updateProductSpecialSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
       }
+
+      const { isSpecial } = validation.data;
       
       await dbStorage.updateProductSpecial(id, isSpecial);
+      logger.info("Product special status updated", { productId: id, isSpecial, adminEmail: req.session.userEmail });
       res.json({ success: true });
     } catch (error) {
-      console.error("Error updating product:", error);
+      logger.error("Error updating product", { error, productId: req.params.id });
       res.status(500).json({ error: "Failed to update product" });
     }
   });
@@ -200,19 +334,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create order - calculates total from database prices to prevent manipulation
   app.post("/api/orders", async (req: Request, res: Response) => {
     try {
-      const { items, pudoLocation, paymentMethod, customerEmail, customerPhone } = req.body;
-      
-      if (!items || items.length === 0) {
-        return res.status(400).json({ error: "Items are required" });
+      // Validate request body
+      const validation = createOrderSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
       }
+
+      const { items, pudoLocation, paymentMethod, customerEmail, customerPhone } = validation.data;
 
       // Calculate total from database prices (never trust client)
       let calculatedTotal = 0;
       const validatedItems = [];
 
       for (const item of items) {
-        const product = await dbStorage.getProduct(item.id);
+        const product = await dbStorage.getProductById(item.id);
         if (!product) {
+          logger.warn("Product not found in order", { productId: item.id, ip: req.ip });
           return res.status(400).json({ error: `Product ${item.id} not found` });
         }
 
@@ -224,13 +363,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const itemTotal = unitPrice * item.quantity;
         calculatedTotal += itemTotal;
 
+        // Match schema structure: {productId, productName, price, size, quantity}
         validatedItems.push({
-          id: item.id,
-          name: product.name,
+          productId: item.id,
+          productName: product.name,
           size: item.size,
           quantity: item.quantity,
-          unitPrice,
-          total: itemTotal,
+          price: unitPrice.toFixed(2),
         });
       }
 
@@ -244,9 +383,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payfastTransactionId: null,
       });
 
+      logOrder.created(order.id, order.total, items.length);
+
       res.json(order);
     } catch (error) {
-      console.error("Error creating order:", error);
+      logger.error("Error creating order", { error, ip: req.ip });
       res.status(500).json({ error: "Failed to create order" });
     }
   });
@@ -263,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(order);
     } catch (error) {
-      console.error("Error fetching order:", error);
+      logger.error("Error fetching order", { error, orderId: req.params.id });
       res.status(500).json({ error: "Failed to fetch order" });
     }
   });
@@ -274,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders = await dbStorage.getAllOrders();
       res.json(orders);
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      logger.error("Error fetching orders", { error, adminEmail: req.session.userEmail });
       res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
@@ -283,16 +424,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/orders/:id/status", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { status, paymentVerified, payfastTransactionId } = req.body;
-
-      if (!status) {
-        return res.status(400).json({ error: "Status is required" });
+      
+      // Validate request body
+      const validation = updateOrderStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
       }
 
+      const { status, paymentVerified, payfastTransactionId } = validation.data;
+
       await dbStorage.updateOrderStatus(id, status, paymentVerified, payfastTransactionId);
+      
+      logOrder.updated(id, status);
+      
       res.json({ success: true });
     } catch (error) {
-      console.error("Error updating order:", error);
+      logger.error("Error updating order", { error, orderId: req.params.id });
       res.status(500).json({ error: "Failed to update order" });
     }
   });
@@ -302,11 +451,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create PayFast payment - gets amount from database to prevent manipulation
   app.post("/api/payfast/create", async (req: Request, res: Response) => {
     try {
-      const { orderId } = req.body;
-      
-      if (!orderId) {
-        return res.status(400).json({ error: "Order ID is required" });
+      // Validate request body
+      const validation = createPaymentSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
       }
+
+      const { orderId } = validation.data;
 
       // Get order from database to verify amount
       const order = await dbStorage.getOrder(orderId);
@@ -332,13 +485,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const signature = generatePayFastSignature(paymentData, config.passphrase);
 
+      logPayment.created(orderId, order.total, "payfast");
+
       res.json({
         ...paymentData,
         signature,
         url: config.baseUrl,
       });
     } catch (error) {
-      console.error("Error creating PayFast payment:", error);
+      logger.error("Error creating PayFast payment", { error, orderId: req.body.orderId });
       res.status(500).json({ error: "Failed to create payment" });
     }
   });
@@ -349,24 +504,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const payload = req.body;
       
-      console.log("=".repeat(80));
-      console.log("PayFast ITN Notification Received:");
-      console.log("Timestamp:", new Date().toISOString());
-      console.log("Payload:", JSON.stringify(payload, null, 2));
-      console.log("=".repeat(80));
+      logPayment.itn(payload);
 
       // Step 1: Verify signature
       const config = getPayFastConfig();
       const signatureValid = verifyPayFastSignature(payload, config.passphrase);
 
       if (!signatureValid) {
-        console.error("❌ Invalid PayFast signature");
+        logger.error("Invalid PayFast signature", { payload });
         return res.status(400).send("Invalid signature");
       }
 
       // Step 2: Verify merchant ID
       if (payload.merchant_id !== config.merchantId) {
-        console.error("❌ Invalid merchant ID");
+        logger.error("Invalid merchant ID", { payload });
         return res.status(400).send("Invalid merchant ID");
       }
 
@@ -374,13 +525,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Must use exact raw body that PayFast sent (not rebuilt)
       const rawBody = req.rawBody as string;
       if (!rawBody) {
-        console.error("❌ No raw body available for validation");
+        logger.error("No raw body available for validation", { payload });
         return res.status(400).send("No raw body");
       }
       
       const serverValid = await validatePayFastPayment(rawBody);
       if (!serverValid) {
-        console.error("❌ PayFast server validation failed");
+        logger.error("PayFast server validation failed", { payload });
         return res.status(400).send("Server validation failed");
       }
 
@@ -390,22 +541,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactionId = payload.pf_payment_id;
       const amountGross = parseFloat(payload.amount_gross);
 
-      console.log(`✅ Valid ITN for Order ${orderId}`);
-      console.log(`   Status: ${paymentStatus}`);
-      console.log(`   Transaction ID: ${transactionId}`);
-      console.log(`   Amount: R ${amountGross}`);
+      logger.info("Valid PayFast ITN", { orderId, paymentStatus, transactionId, amountGross });
 
       // Step 4: Verify payment amount matches order
       if (orderId) {
         const order = await dbStorage.getOrder(orderId);
         if (!order) {
-          console.error(`❌ Order ${orderId} not found`);
+          logger.error("Order not found in PayFast ITN", { orderId });
           return res.status(404).send("Order not found");
         }
 
         const orderTotal = parseFloat(order.total);
         if (Math.abs(amountGross - orderTotal) > 0.01) {
-          console.error(`❌ Amount mismatch: expected R${orderTotal}, got R${amountGross}`);
+          logger.error("PayFast amount mismatch", { 
+            orderId, 
+            expected: orderTotal, 
+            received: amountGross 
+          });
           return res.status(400).send("Amount mismatch");
         }
 
@@ -418,9 +570,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               true,
               transactionId
             );
-            console.log(`✅ Order ${orderId} marked as paid`);
+            logPayment.verified(orderId, transactionId, amountGross.toFixed(2));
           } catch (error) {
-            console.error(`❌ Failed to update order ${orderId}:`, error);
+            logger.error("Failed to update order after payment", { orderId, error });
+            logPayment.failed(orderId, "Failed to update order status");
           }
         }
       }
@@ -428,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Acknowledge receipt
       res.status(200).send("OK");
     } catch (error) {
-      console.error("PayFast ITN Error:", error);
+      logger.error("PayFast ITN Error", { error });
       res.status(500).send("Error processing notification");
     }
   });
@@ -437,17 +590,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TODO (PRODUCTION): Move to proper backend service with Firebase Admin SDK
   app.post("/api/notifications/send", async (req: Request, res: Response) => {
     try {
-      const { token, title, body } = req.body;
+      // Validate request body
+      const validation = fcmNotificationSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
+      }
+
+      const { token, title, body } = validation.data;
 
       // This would normally be done server-side with the Firebase Admin SDK
-      console.log("=".repeat(80));
-      console.log("FCM Push Notification Request (STUB MODE):");
-      console.log("Timestamp:", new Date().toISOString());
-      console.log("Token:", token);
-      console.log("Title:", title);
-      console.log("Body:", body);
-      console.log("NOTE: In production, this would send via Firebase Admin SDK");
-      console.log("=".repeat(80));
+      logger.info("FCM notification request (stub mode)", { 
+        token: token.substring(0, 20) + "...", 
+        title, 
+        body 
+      });
 
       // Stub response - always succeeds in development mode
       res.json({
@@ -455,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Notification logged (stub mode - no actual notification sent)"
       });
     } catch (error) {
-      console.error("FCM Send Error:", error);
+      logger.error("FCM Send Error", { error });
       res.status(500).json({ 
         success: false, 
         message: "Error sending notification" 

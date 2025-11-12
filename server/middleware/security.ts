@@ -46,7 +46,7 @@ export function setupSecurityMiddleware(app: Express) {
     ...(isDevelopment ? ["http://localhost:5000", "http://localhost:3000"] : []),
   ];
 
-  // Allow all *.repl.co domains in development
+  // Allow Replit domains in development
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -57,8 +57,8 @@ export function setupSecurityMiddleware(app: Express) {
         return callback(null, true);
       }
 
-      // Allow *.repl.co domains
-      if (origin.endsWith(".repl.co")) {
+      // Allow *.repl.co and *.replit.dev domains
+      if (origin.endsWith(".repl.co") || origin.endsWith(".replit.dev")) {
         return callback(null, true);
       }
 
