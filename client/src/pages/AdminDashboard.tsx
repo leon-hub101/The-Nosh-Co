@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Share2, Send, LogOut, Package, Grid3x3, Save, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Share2, Send, LogOut, Package, Grid3x3, Save, AlertTriangle, Store } from "lucide-react";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useSpecials } from "@/contexts/SpecialsContext";
 import { useProducts } from "@/hooks/useProducts";
 import { usePush } from "@/hooks/usePush";
+import { useShopStatus } from "@/hooks/useShopStatus";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -13,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -20,10 +22,29 @@ export default function AdminDashboard() {
   const { isSpecial, toggleSpecial, isTogglingSpecial } = useSpecials();
   const { products, isLoading } = useProducts();
   const { hasPermission, requestPermission, sendTestPush } = usePush();
+  const { data: shopStatus, isLoading: isLoadingShopStatus } = useShopStatus();
   const { toast } = useToast();
 
   // Local state for stock management (productId -> {stock500g, stock1kg})
   const [stockValues, setStockValues] = useState<Record<number, { stock500g: string; stock1kg: string }>>({});
+
+  // Local state for shop status management
+  const [shopControlState, setShopControlState] = useState({
+    isOpen: shopStatus?.isOpen ?? true,
+    closedMessage: shopStatus?.closedMessage ?? "",
+    reopenDate: shopStatus?.reopenDate ? new Date(shopStatus.reopenDate).toISOString().slice(0, 16) : "",
+  });
+
+  // Sync shop control state when shop status loads
+  useEffect(() => {
+    if (shopStatus) {
+      setShopControlState({
+        isOpen: shopStatus.isOpen,
+        closedMessage: shopStatus.closedMessage || "",
+        reopenDate: shopStatus.reopenDate ? new Date(shopStatus.reopenDate).toISOString().slice(0, 16) : "",
+      });
+    }
+  }, [shopStatus]);
 
   // Mutation for updating stock
   const updateStockMutation = useMutation({
@@ -55,6 +76,27 @@ export default function AdminDashboard() {
       toast({
         title: "Update Failed",
         description: error.message || "Failed to update stock levels.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for updating shop status
+  const updateShopStatusMutation = useMutation({
+    mutationFn: async (data: { isOpen: boolean; closedMessage?: string | null; reopenDate?: string | null }) => {
+      return await apiRequest('PATCH', '/api/shop/toggle', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shop/status'] });
+      toast({
+        title: "Shop Status Updated",
+        description: shopControlState.isOpen ? "Shop is now open for business!" : "Shop is now closed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update shop status.",
         variant: "destructive",
       });
     },
@@ -99,6 +141,16 @@ export default function AdminDashboard() {
     }
 
     updateStockMutation.mutate({ productId, stock500g, stock1kg });
+  };
+
+  const handleSaveShopStatus = () => {
+    const payload: { isOpen: boolean; closedMessage?: string | null; reopenDate?: string | null } = {
+      isOpen: shopControlState.isOpen,
+      closedMessage: shopControlState.closedMessage || null,
+      reopenDate: shopControlState.reopenDate || null,
+    };
+
+    updateShopStatusMutation.mutate(payload);
   };
 
   const handleLogout = () => {
@@ -213,6 +265,98 @@ export default function AdminDashboard() {
             <Grid3x3 className="w-5 h-5 mr-3" />
             View Categories
           </Button>
+        </div>
+
+        {/* Shop Control Section */}
+        <div className="bg-white border border-card-border p-8 mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Store className="w-6 h-6 text-[#8B9F8D]" />
+            <h2 className="text-2xl font-serif font-light tracking-wide text-foreground">
+              Shop Control
+            </h2>
+          </div>
+
+          {isLoadingShopStatus ? (
+            <div className="space-y-4">
+              <div className="h-12 bg-stone-200 animate-pulse rounded" />
+              <div className="h-24 bg-stone-200 animate-pulse rounded" />
+              <div className="h-12 bg-stone-200 animate-pulse rounded" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Shop Open/Closed Toggle */}
+              <div className="flex items-center justify-between p-6 border border-card-border bg-stone-50">
+                <div className="flex items-center gap-4">
+                  <Label htmlFor="shop-status-toggle" className="text-lg font-sans font-semibold text-foreground cursor-pointer">
+                    Shop Status
+                  </Label>
+                  <Badge 
+                    variant={shopControlState.isOpen ? "default" : "secondary"}
+                    className={shopControlState.isOpen ? "bg-green-500" : "bg-orange-500"}
+                    data-testid="badge-shop-status"
+                  >
+                    {shopControlState.isOpen ? "OPEN" : "CLOSED"}
+                  </Badge>
+                </div>
+                <Switch
+                  id="shop-status-toggle"
+                  checked={shopControlState.isOpen}
+                  onCheckedChange={(checked) => setShopControlState(prev => ({ ...prev, isOpen: checked }))}
+                  data-testid="toggle-shop-status"
+                  className="data-[state=checked]:bg-green-500"
+                />
+              </div>
+
+              {/* Closed Message Input */}
+              <div className="space-y-2">
+                <Label htmlFor="closed-message" className="text-sm font-sans text-gray-700">
+                  Closed Message {!shopControlState.isOpen && <span className="text-red-500">*</span>}
+                </Label>
+                <Textarea
+                  id="closed-message"
+                  placeholder="e.g., We're temporarily closed for inventory. We'll be back soon!"
+                  value={shopControlState.closedMessage}
+                  onChange={(e) => setShopControlState(prev => ({ ...prev, closedMessage: e.target.value }))}
+                  disabled={shopControlState.isOpen}
+                  rows={3}
+                  data-testid="input-closed-message"
+                  className="resize-none"
+                />
+                <p className="text-xs text-gray-500">
+                  This message will be displayed to customers when the shop is closed.
+                </p>
+              </div>
+
+              {/* Reopen Date Input */}
+              <div className="space-y-2">
+                <Label htmlFor="reopen-date" className="text-sm font-sans text-gray-700">
+                  Auto-Reopen Date & Time (Optional)
+                </Label>
+                <Input
+                  id="reopen-date"
+                  type="datetime-local"
+                  value={shopControlState.reopenDate}
+                  onChange={(e) => setShopControlState(prev => ({ ...prev, reopenDate: e.target.value }))}
+                  disabled={shopControlState.isOpen}
+                  data-testid="input-reopen-date"
+                />
+                <p className="text-xs text-gray-500">
+                  The shop will automatically reopen at this date and time. Leave blank for manual reopening.
+                </p>
+              </div>
+
+              {/* Save Button */}
+              <Button
+                onClick={handleSaveShopStatus}
+                disabled={updateShopStatusMutation.isPending}
+                className="w-full md:w-auto"
+                data-testid="button-save-shop-status"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateShopStatusMutation.isPending ? "Saving..." : "Save Shop Status"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Products List */}
