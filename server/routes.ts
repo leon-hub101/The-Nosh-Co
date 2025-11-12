@@ -372,6 +372,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create order - calculates total from database prices to prevent manipulation
   app.post("/api/orders", async (req: Request, res: Response) => {
     try {
+      // Check if shop is open before processing order
+      const shopStatus = await dbStorage.getShopStatus();
+      if (!shopStatus.isOpen) {
+        logger.warn("Order blocked - shop is closed", { 
+          ip: req.ip,
+          closedMessage: shopStatus.closedMessage,
+          reopenDate: shopStatus.reopenDate 
+        });
+        return res.status(403).json({ 
+          error: "Shop is currently closed. Orders cannot be placed at this time.",
+          closedMessage: shopStatus.closedMessage,
+          reopenDate: shopStatus.reopenDate
+        });
+      }
+
       // Validate request body
       const validation = createOrderSchema.safeParse(req.body);
       if (!validation.success) {
@@ -515,6 +530,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create PayFast payment - gets amount from database to prevent manipulation
   app.post("/api/payfast/create", async (req: Request, res: Response) => {
     try {
+      // Check if shop is open before processing payment
+      const shopStatus = await dbStorage.getShopStatus();
+      if (!shopStatus.isOpen) {
+        logger.warn("Payment blocked - shop is closed", { 
+          ip: req.ip,
+          orderId: req.body.orderId 
+        });
+        return res.status(403).json({ 
+          error: "Shop is currently closed. Payments cannot be processed at this time."
+        });
+      }
+
       // Validate request body
       const validation = createPaymentSchema.safeParse(req.body);
       if (!validation.success) {
