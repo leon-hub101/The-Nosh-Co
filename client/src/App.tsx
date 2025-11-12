@@ -8,6 +8,8 @@ import { AdminProvider } from "@/contexts/AdminContext";
 import { SpecialsProvider } from "@/contexts/SpecialsContext";
 import { OrderProvider } from "@/contexts/OrderContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { ShopClosedOverlay } from "@/components/ShopClosedOverlay";
+import { useShopStatus } from "@/hooks/useShopStatus";
 import Home from "@/pages/Home";
 import CategoryPage from "@/pages/CategoryPage";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -38,6 +40,27 @@ function Router() {
   );
 }
 
+function AppContent() {
+  const { data: shopStatus, isLoading } = useShopStatus();
+
+  // Show overlay if shop is closed (but not while loading)
+  if (!isLoading && shopStatus && !shopStatus.isOpen) {
+    return (
+      <ShopClosedOverlay 
+        closedMessage={shopStatus.closedMessage}
+        reopenDate={shopStatus.reopenDate}
+      />
+    );
+  }
+
+  return (
+    <>
+      <Toaster />
+      <Router />
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -46,8 +69,7 @@ function App() {
           <SpecialsProvider>
             <BasketProvider>
               <OrderProvider>
-                <Toaster />
-                <Router />
+                <AppContent />
               </OrderProvider>
             </BasketProvider>
           </SpecialsProvider>
