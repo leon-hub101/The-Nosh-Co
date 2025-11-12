@@ -55,7 +55,9 @@ const createOrderSchema = z.object({
 });
 
 const updateOrderStatusSchema = z.object({
-  status: z.string().min(1, "Status is required"),
+  status: z.enum(["pending", "paid", "processing", "shipped", "delivered", "cancelled"], {
+    errorMap: () => ({ message: "Invalid order status" })
+  }),
   paymentVerified: z.boolean().optional(),
   payfastTransactionId: z.string().optional(),
 });
