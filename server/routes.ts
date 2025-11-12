@@ -377,13 +377,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate total from database prices (never trust client)
       let calculatedTotal = 0;
-      const validatedItems = [];
+      const validatedItems: Array<{productId: number, productName: string, size: string, price: string, quantity: number}> = [];
 
       for (const item of items) {
         const product = await dbStorage.getProductById(item.id);
         if (!product) {
           logger.warn("Product not found in order", { productId: item.id, ip: req.ip });
           return res.status(400).json({ error: `Product ${item.id} not found` });
+        }
+
+        // Check stock availability
+        const availableStock = item.size === "1kg" ? product.stock1kg : product.stock500g;
+        if (availableStock < item.quantity) {
+          logger.warn("Insufficient stock for order item", { 
+            productId: item.id, 
+            productName: product.name,
+            requestedSize: item.size,
+            requestedQuantity: item.quantity,
+            availableStock,
+            ip: req.ip 
+          });
+          return res.status(400).json({ 
+            error: `Insufficient stock for ${product.name} (${item.size}). Only ${availableStock} available.` 
+          });
         }
 
         // Get correct price based on size
@@ -404,15 +420,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const order = await dbStorage.createOrder({
-        total: calculatedTotal.toFixed(2),
-        items: validatedItems,
-        pudoLocation: pudoLocation || null,
-        paymentMethod: paymentMethod || null,
-        customerEmail: customerEmail || null,
-        customerPhone: customerPhone || null,
-        payfastTransactionId: null,
-      });
+      // Create order and decrement stock atomically using storage layer
+      let order;
+      try {
+        order = await dbStorage.createOrderWithStockDecrement({
+          total: calculatedTotal.toFixed(2),
+          items: validatedItems,
+          pudoLocation: pudoLocation || null,
+          paymentMethod: paymentMethod || null,
+          customerEmail: customerEmail || null,
+          customerPhone: customerPhone || null,
+        }, items);
+      } catch (error: any) {
+        logger.error("Order creation with stock decrementation failed", { 
+          error: error.message,
+          items,
+          ip: req.ip 
+        });
+        return res.status(400).json({ error: error.message || "Failed to create order" });
+      }
 
       logOrder.created(order.id, order.total, items.length);
 

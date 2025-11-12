@@ -17,6 +17,9 @@ declare module 'http' {
   }
 }
 
+// Trust first proxy hop for accurate IP detection (Replit infrastructure)
+app.set('trust proxy', 1);
+
 // Security middleware (helmet, CORS, rate limiting)
 setupSecurityMiddleware(app);
 

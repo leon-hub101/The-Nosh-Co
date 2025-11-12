@@ -152,30 +152,50 @@ export default function CategoryPage() {
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between pb-3 border-b border-card-border">
-                        <div>
+                        <div className="flex-1">
                           <p className="text-sm font-sans text-gray-600">500g</p>
                           <p className="text-lg font-serif text-foreground">R {product.price.toFixed(2)}</p>
+                          {product.stock > 0 ? (
+                            <p className="text-xs font-sans text-green-600 mt-1" data-testid={`stock-500g-${product.id}`}>
+                              In Stock: {product.stock}
+                            </p>
+                          ) : (
+                            <p className="text-xs font-sans text-red-600 mt-1" data-testid={`stock-500g-${product.id}`}>
+                              Out of Stock
+                            </p>
+                          )}
                         </div>
                         <Button
                           size="sm"
                           onClick={() => handleAddToBasket(product, "500g")}
+                          disabled={product.stock === 0}
                           data-testid={`button-add-500g-${product.id}`}
                         >
-                          Add to Basket
+                          {product.stock === 0 ? 'Out of Stock' : 'Add to Basket'}
                         </Button>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <p className="text-sm font-sans text-gray-600">1kg</p>
                           <p className="text-lg font-serif text-foreground">R {product.price2.toFixed(2)}</p>
+                          {product.stock2 > 0 ? (
+                            <p className="text-xs font-sans text-green-600 mt-1" data-testid={`stock-1kg-${product.id}`}>
+                              In Stock: {product.stock2}
+                            </p>
+                          ) : (
+                            <p className="text-xs font-sans text-red-600 mt-1" data-testid={`stock-1kg-${product.id}`}>
+                              Out of Stock
+                            </p>
+                          )}
                         </div>
                         <Button
                           size="sm"
                           onClick={() => handleAddToBasket(product, "1kg")}
+                          disabled={product.stock2 === 0}
                           data-testid={`button-add-1kg-${product.id}`}
                         >
-                          Add to Basket
+                          {product.stock2 === 0 ? 'Out of Stock' : 'Add to Basket'}
                         </Button>
                       </div>
                     </div>

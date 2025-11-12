@@ -21,6 +21,7 @@ export interface IStorage {
   
   // Orders
   createOrder(order: InsertOrder): Promise<Order>;
+  createOrderWithStockDecrement(orderData: InsertOrder, items: Array<{id: number, size: "500g" | "1kg", quantity: number}>): Promise<Order>;
   getOrder(id: string): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
   updateOrderStatus(id: string, status: string, paymentVerified?: boolean, payfastTransactionId?: string): Promise<void>;
@@ -127,6 +128,45 @@ export class MemStorage implements IStorage {
     };
     this.orders.set(id, order);
     return order;
+  }
+
+  async createOrderWithStockDecrement(orderData: InsertOrder, items: Array<{id: number, size: "500g" | "1kg", quantity: number}>): Promise<Order> {
+    // Aggregate quantities by product/size to handle duplicates
+    const stockDecrements = new Map<string, {productId: number, size: string, totalQuantity: number}>();
+    for (const item of items) {
+      const key = `${item.id}-${item.size}`;
+      const existing = stockDecrements.get(key);
+      if (existing) {
+        existing.totalQuantity += item.quantity;
+      } else {
+        stockDecrements.set(key, {
+          productId: item.id,
+          size: item.size,
+          totalQuantity: item.quantity,
+        });
+      }
+    }
+
+    // Validate and decrement stock for each product/size combination
+    for (const decrement of Array.from(stockDecrements.values())) {
+      const product = this.products.get(decrement.productId);
+      if (!product) {
+        throw new Error(`Product ${decrement.productId} not found`);
+      }
+      
+      const currentStock = decrement.size === "1kg" ? product.stock1kg : product.stock500g;
+      if (currentStock < decrement.totalQuantity) {
+        throw new Error(`Insufficient stock for ${product.name} (${decrement.size}). Only ${currentStock} available, requested ${decrement.totalQuantity}.`);
+      }
+      
+      if (decrement.size === "1kg") {
+        product.stock1kg -= decrement.totalQuantity;
+      } else {
+        product.stock500g -= decrement.totalQuantity;
+      }
+    }
+    
+    return this.createOrder(orderData);
   }
 
   async getOrder(id: string): Promise<Order | undefined> {
