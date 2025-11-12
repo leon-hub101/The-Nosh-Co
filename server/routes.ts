@@ -35,6 +35,11 @@ const updateProductSpecialSchema = z.object({
   isSpecial: z.boolean(),
 });
 
+const updateProductStockSchema = z.object({
+  stock500g: z.number().int().min(0, "Stock must be non-negative"),
+  stock1kg: z.number().int().min(0, "Stock must be non-negative"),
+});
+
 // Order validation schemas
 const orderItemSchema = z.object({
   id: z.number().int().positive(),
@@ -328,6 +333,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       logger.error("Error updating product", { error, productId: req.params.id });
       res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+
+  // Update product stock (admin only)
+  app.patch("/api/products/:id/stock", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Validate request body
+      const validation = updateProductStockSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
+      }
+
+      const { stock500g, stock1kg } = validation.data;
+      
+      await dbStorage.updateProductStock(id, stock500g, stock1kg);
+      logger.info("Product stock updated", { productId: id, stock500g, stock1kg, adminEmail: req.session.userEmail });
+      res.json({ success: true });
+    } catch (error) {
+      logger.error("Error updating product stock", { error, productId: req.params.id });
+      res.status(500).json({ error: "Failed to update product stock" });
     }
   });
 
